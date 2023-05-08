@@ -31,7 +31,6 @@ Within the `Arduino` configuraiton, add `-mmcu=atmega328` to the `compilerArgs` 
 
 ```json
 "compilerArgs": [
-    ...
     "-mmcu=atmega328"
 ]
 ```
@@ -40,7 +39,6 @@ Next add your Arduino libraries path to the `includePath` list:
 
 ```json
 "includePath": [
-    ...
     "${HOME}/Arduino/libraries/**"
 ]
 ```
