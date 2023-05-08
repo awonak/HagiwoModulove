@@ -14,10 +14,10 @@
 #include <avr/io.h>
 
 // GPIO Pin mapping for knobs and jacks.
-#define P1 0 // Probability
-#define P2 1 // Sequence step length
-#define P3 3 // Amplitiude
-#define P4 5 // Refrain count
+#define P1 0  // Probability
+#define P2 1  // Sequence step length
+#define P3 3  // Amplitiude
+#define P4 5  // Refrain count
 
 #define CLOCK_IN 3
 #define PWM_OUT 10
@@ -41,8 +41,7 @@ int cv_max = 1023;
 int cv_pattern[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 int pattern_options[8] = {1, 2, 3, 4, 6, 8, 12, 16};
 
-void setup()
-{
+void setup() {
     Serial.begin(9600);
     pinMode(CLOCK_IN, INPUT);
     pinMode(PWM_OUT, OUTPUT);
@@ -53,29 +52,25 @@ void setup()
     delay(50);
 
     // Inititialize random values in sequence.
-    for (int i = 0; i < pattern_size_max; i++)
-    {
+    for (int i = 0; i < pattern_size_max; i++) {
         cv_pattern[i] = random(cv_max);
     }
 }
 
-void loop()
-{
+void loop() {
     // Read clock input.
     old_clock_in = clock_in;
     clock_in = digitalRead(CLOCK_IN);
 
     // Check for new clock trigger.
-    if (old_clock_in == 0 && clock_in == 1)
-    {
+    if (old_clock_in == 0 && clock_in == 1) {
         // Increment the current sequence step.
         // Right shift to scale input to a range of 8.
         steps = pattern_options[(analogRead(P2) >> 7)];
         step = (step + 1) % steps;
 
         // Increment Refrain at the first step of the sequence.
-        if (step == 0)
-        {
+        if (step == 0) {
             // Right shift to scale input to a range of 4.
             refrain = (analogRead(P4) >> 8) + 1;
             refrain_counter = (refrain_counter + 1) % refrain;
@@ -85,8 +80,7 @@ void loop()
         // should be updated.
         probability = analogRead(P1);
         rand_val = random(cv_max);
-        if (refrain_counter == 0 && probability > rand_val)
-        {
+        if (refrain_counter == 0 && probability > rand_val) {
             cv_pattern[step] = random(cv_max);
         }
 
@@ -101,10 +95,13 @@ void loop()
     analogWrite(PWM_OUT, output);
 }
 
-void debug()
-{
+void debug() {
 #ifdef DEBUG
     Serial.println(
-        "Prob: " + String(probability) + " > " + String(rand_val) + "\tValue: " + String(cv_pattern[step]) + "\tRefrain: [" + String(refrain_counter) + "/" + String(refrain) + "]" + "\tSteps: [" + String(step) + "/" + String(steps) + "]" + "\tAmp: " + String(amplititude));
+        "Prob: " + String(probability) + " > " + String(rand_val)                 //
+        + "\tValue: " + String(cv_pattern[step])                                  //
+        + "\tRefrain: [" + String(refrain_counter) + "/" + String(refrain) + "]"  //
+        + "\tSteps: [" + String(step) + "/" + String(steps) + "]"                 //
+        + "\tAmp: " + String(amplititude));
 #endif
 }

@@ -20,7 +20,8 @@
 #define GATE_IN 3  // Gate in / Re-trig
 #define CV_OUT 10  // Envelope Output
 
-#define DEBUG
+// Uncomment to print state to serial monitoring output.
+// #define DEBUG
 
 bool gate = 1;  // External gate input detect: 0=gate off, 1=gate on
 bool old_gate = 0;
