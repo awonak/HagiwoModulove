@@ -18,9 +18,9 @@ long interval = 1000;
 #include <Encoder.h>
 
 //Oled setting
-#include<Wire.h>
-#include<Adafruit_GFX.h>
-#include<Adafruit_SSD1306.h>
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
 
 #define OLED_ADDRESS 0x3C
 #define SCREEN_WIDTH 128
@@ -165,8 +165,9 @@ void loop() {
 
   //-----------------push button----------------------
 
+  //push button on ,Logic inversion , sw_timer is countermeasure of chattering
   sw = 1;
-  if ((digitalRead(12) == 0 ) && ( sw_timer + 300 <= millis() )) { //push button on ,Logic inversion , sw_timer is countermeasure of chattering
+  if ((digitalRead(12) == 0 ) && ( sw_timer + 300 <= millis() )) {
     sw_timer = millis();
     sw = 0;
     disp_refresh = debug;
@@ -384,7 +385,8 @@ void loop() {
         }
       }
     }
-    disp_refresh = 1;//Updates the display where the trigger was entered.If it update it all the time, the response of gate on will be worse.
+    //Updates the display where the trigger was entered.If it update it all the time, the response of gate on will be worse.
+    disp_refresh = 1;
 
     if (select_ch == 6) {// random mode setting
       step_cnt ++;

@@ -4,6 +4,7 @@ This is a collection of open source hardware and software files related to Modul
 
 ## Hardware
 
+* [A•RYTH•MATIK](A-RYTH-MATIK/)
 * [Sync LFO](SyncLFO/)
 
 ## Software
@@ -39,7 +40,8 @@ Next add your Arduino libraries path to the `includePath` list:
 
 ```json
 "includePath": [
-    "${HOME}/Arduino/libraries/**"
+    "${HOME}/Arduino/libraries/**",
+    "${HOME}/.arduino15/packages/arduino/hardware/avr/1.8.6/libraries/**"
 ]
 ```
 
