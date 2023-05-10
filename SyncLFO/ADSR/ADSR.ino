@@ -26,7 +26,7 @@
 bool gate = 1;  // External gate input detect: 0=gate off, 1=gate on
 bool old_gate = 0;
 
-const byte top = 255;  // Envelope state max value
+const byte max_val = 255;  // Envelope state max value
 byte val = 0;          // Envelope state value
 int time = 0;          // Envelope delay time between incremental change
 int sustain = 0;       // Sustain value;
@@ -76,9 +76,9 @@ void loop() {
     switch (stage) {
         case ATTACK:
             // At minimum attack levels, traverse the curve at a faster rate than default.
-            val += analogRead(P1) == 0 ? min(top - val, 10) : 1;
+            val += analogRead(P1) == 0 ? min(max_val - val, 10) : 1;
 
-            if (val >= top) {
+            if (val >= max_val) {
                 stage = DECAY;
             }
             break;
@@ -91,14 +91,14 @@ void loop() {
             }
 
             // Check if the falling decay envelope has reached sustain level.
-            sustain = min(map(analogRead(P3), 0, 1023, 0, top), val);
+            sustain = min(map(analogRead(P3), 0, 1023, 0, max_val), val);
             if (val <= sustain) {
                 stage = SUSTAIN;
             }
             break;
 
         case SUSTAIN:
-            val = map(analogRead(P3), 0, 1023, 0, top);
+            val = map(analogRead(P3), 0, 1023, 0, max_val);
             break;
 
         case RELEASE:
