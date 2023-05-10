@@ -1,7 +1,7 @@
 /**
  * @file Polyrhythm.ino
  * @author Adam Wonak (https://github.com/awonak/)
- * @brief Generate polyrhythms based on the four 16 step beat counter knobs for HAGIWO Sync Mod LFO (demo: TODO)
+ * @brief Generate polyrhythms based on the four 16 step counter knobs for HAGIWO Sync Mod LFO (demo: TODO)
  * @version 0.1
  * @date 2023-05-09
  *
@@ -20,8 +20,16 @@
 #define TRIG_IN 3  // Trigger Input to advance step
 #define CV_OUT 10  // CV Output for current step
 
-// Uncomment to print state to serial monitoring output.
-// #define DEBUG
+// Flags for changing behavior of the script.
+
+// Flag for enabling debug print to serial monitoring output.
+const bool DEBUG = false;
+
+// Flag for resetting all polyrhythm counters when any one changes.
+const bool RESET = true;
+
+// Flag for overriding OR overlapping hit behavior with XOR.
+const bool XOR = false;
 
 bool trig = 1;  // External trigger input detect
 bool old_trig = 0;
@@ -69,14 +77,14 @@ void loop() {
 
 // Advance the counter for each polyrhythm and return true if any counter reaches its polyrhythm step.
 bool advance_counters() {
-    hit = false;
+    bool hit = false;
     for (byte i = 0; i < 4; i++) {
         if (S[i] == 0) {
             continue;
         }
         if (C[i] >= S[i]) {
             C[i] = 0;
-            hit = true;
+            hit = (XOR) ? hit != true : true;
         }
         C[i]++;
     }
@@ -85,23 +93,31 @@ bool advance_counters() {
 
 // Check each polyrhythm step knob for a change and update the step and counter values.
 void update_polyrhthms() {
+    bool reset = false;
     for (byte i = 0; i < 4; i++) {
         read = map(analogRead(P[i]), 0, 1023, 0, 16);
         if (read != S[i]) {
             S[i] = read;
-            C[i] = read;
+            reset = true;
+        }
+    }
+    if (reset and RESET) {
+        for (byte i = 0; i < 4; i++) {
+            if (read != S[i]) {
+                C[i] = 0;
+            }
         }
     }
 }
 
 void debug() {
-#ifdef DEBUG
-    Serial.println(
-        "Hit:   " + String(hit)                       // Print all state vars
-        + "\tS1: " + String(S[0]) + "|" + String(C[0])  //
-        + "\tS2: " + String(S[1]) + "|" + String(C[1])  //
-        + "\tS3: " + String(S[2]) + "|" + String(C[2])  //
-        + "\tS4: " + String(S[3]) + "|" + String(C[3])  //
-    );
-#endif
+    if (DEBUG) {
+        Serial.println(
+            "Hit:   " + String(hit)                         // Print all state vars
+            + "\tS1: " + String(C[0]) + ">" + String(S[0])  //
+            + "\tS2: " + String(C[1]) + ">" + String(S[1])  //
+            + "\tS3: " + String(C[2]) + ">" + String(S[2])  //
+            + "\tS4: " + String(C[3]) + ">" + String(S[3])  //
+        );
+    }
 }
