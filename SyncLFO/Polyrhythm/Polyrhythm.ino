@@ -19,14 +19,14 @@
  *
  * There are some flags to change the behavior of the script.
  *
+ * OXR - The default behavior for overlapping rhythms is to OR, meaning the
+ *       polyrhythm will trigger if any of the rhythms hits on the current
+ *       beat. Enabling XOR will
+ *
  * RESET - Enablign this will cause the each rhythm counter to reset when any
  *         one of the rhythms changes. This ensures all rhythms will count from
  *         the same starting point.
  *
- * OXR - The default behavior for overlapping rhythms is to OR, meaning the
- *       polyrhythm will trigger if any of the rhythms hits on the current
- *       beat. Enabling XOR will
-
  */
 
 #include <avr/io.h>
@@ -47,11 +47,11 @@
 //
 // Flags for changing behavior of the script.
 
-// Flag for resetting all polyrhythm counters when any one changes.
-const bool RESET = false;
-
 // Flag for overriding OR overlapping hit behavior with XOR.
 const bool XOR = false;
+
+// Flag for resetting all polyrhythm counters when any one changes.
+const bool RESET = false;
 
 // Flag for enabling debug print to serial monitoring output.
 const bool DEBUG = false;
@@ -94,11 +94,11 @@ void loop() {
             cv = (hits == 1) ? CV_3V : 0;
         }
         // 3v for only one rhythm hit on this beat.
-        else if (hits > 1) {
+        else if (hits == 1) {
             cv = CV_3V;
         }
         // 5v accent for more than one rhythm hit on this beat.
-        else if (hits == 1) {
+        else if (hits > 1) {
             cv = CV_5V;
         } else {
             cv = 0;
@@ -123,11 +123,11 @@ byte advance_counters() {
         if (R[i] == 0) {
             continue;
         }
+        C[i]++;
         if (C[i] >= R[i]) {
             C[i] = 0;
             hits++;
         }
-        C[i]++;
     }
     return hits;
 }
@@ -159,7 +159,7 @@ void update_polyrhthms() {
 void debug() {
     if (DEBUG) {
         Serial.println(
-            "Out CV:   " + String(cv)                          // Print all state vars
+            "Out CV:   " + String(cv)                       // Print all state vars
             + "\tS1: " + String(C[0]) + ">" + String(R[0])  //
             + "\tS2: " + String(C[1]) + ">" + String(R[1])  //
             + "\tS3: " + String(C[2]) + ">" + String(R[2])  //
