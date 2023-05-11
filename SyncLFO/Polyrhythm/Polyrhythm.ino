@@ -58,14 +58,13 @@ const bool DEBUG = false;
 
 //
 // Script state variables.
-bool trig = 1;  // External trigger input detect
+bool trig = 0;  // External trigger input detect
 bool old_trig = 0;
+byte cv, hits;
 
 byte P[] = {P1, P2, P3, P4};  // Array of knob GPIO identifiers.
 byte R[] = {0, 0, 0, 0};      // Polyrhythm rhythm subdivision choice per knob.
 byte C[] = {0, 0, 0, 0};      // Polyrhythm counter per knob.
-
-byte cv, hits;
 
 void setup() {
     Serial.begin(9600);
@@ -86,7 +85,7 @@ void loop() {
     old_trig = trig;
     trig = digitalRead(TRIG_IN);
 
-    // Detect if new trigger received and advance counter.
+    // Detect if new trigger received, advance counter and check for hit on the beat.
     if (old_trig == 0 && trig == 1) {
         hits = advance_counters();
         // XOR mode enabled will only trigger if one and only one rhythm hits on this beat.
@@ -134,7 +133,7 @@ byte advance_counters() {
 
 // Check each rhythm knob for a change and update the rhythm and counter values.
 void update_polyrhthms() {
-    bool reset = false;
+    bool changed = false;
     int raw, rhythm;
     for (byte i = 0; i < 4; i++) {
         raw = map(analogRead(P[i]), 0, 1023, 0, 16);
@@ -144,10 +143,11 @@ void update_polyrhthms() {
         if (rhythm != R[i]) {
             R[i] = rhythm;
             C[i] = 0;
-            reset = true;
+            changed = true;
         }
     }
-    if (reset and RESET) {
+    // Check if all rhythm counters should be reset.
+    if (changed and RESET) {
         for (byte i = 0; i < 4; i++) {
             if (rhythm != R[i]) {
                 C[i] = 0;
