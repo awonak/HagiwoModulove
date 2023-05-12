@@ -2,7 +2,7 @@
  * @file Polyrhythm.ino
  * @author Adam Wonak (https://github.com/awonak/)
  * @brief Generate polyrhythms based on the four 16 step counter knobs for HAGIWO Sync Mod LFO (demo: TODO)
- * @version 0.1
+ * @version 0.2
  * @date 2023-05-09
  *
  * @copyright Copyright (c) 2023
@@ -17,15 +17,13 @@
  * 3v. XOR mode will output 3v triggers when only one rhythm triggers on the
  * beat.
  *
- * There are some flags to change the behavior of the script.
+ * Flags:
  *
- * OXR - The default behavior for overlapping rhythms is to OR, meaning the
- *       polyrhythm will trigger if any of the rhythms hits on the current
- *       beat. Enabling XOR will
+ * OXR -  The default behavior for overlapping rhythms is to OR, meaning the
+ *        polyrhythm will trigger if any of the rhythms hits on the current
+ *        beat. Enabling XOR will
  *
- * RESET - Enablign this will cause the each rhythm counter to reset when any
- *         one of the rhythms changes. This ensures all rhythms will count from
- *         the same starting point.
+ * DEBUG  Enable serial debug printing.
  *
  */
 
@@ -44,27 +42,20 @@
 #define CV_3V 77
 #define CV_5V 128
 
-//
-// Flags for changing behavior of the script.
-
 // Flag for overriding OR overlapping hit behavior with XOR.
 const bool XOR = false;
-
-// Flag for resetting all polyrhythm counters when any one changes.
-const bool RESET = false;
 
 // Flag for enabling debug print to serial monitoring output.
 const bool DEBUG = false;
 
-//
 // Script state variables.
 bool trig = 0;  // External trigger input detect
 bool old_trig = 0;
-byte cv, hits;
+const byte max_rhythm = 16;
+byte hits, counter;
 
 byte P[] = {P1, P2, P3, P4};  // Array of knob GPIO identifiers.
 byte R[] = {0, 0, 0, 0};      // Polyrhythm rhythm subdivision choice per knob.
-byte C[] = {0, 0, 0, 0};      // Polyrhythm counter per knob.
 
 void setup() {
     Serial.begin(9600);
@@ -87,22 +78,12 @@ void loop() {
 
     // Detect if new trigger received, advance counter and check for hit on the beat.
     if (old_trig == 0 && trig == 1) {
-        hits = advance_counters();
-        // XOR mode enabled will only trigger if one and only one rhythm hits on this beat.
-        if (XOR) {
-            cv = (hits == 1) ? CV_3V : 0;
-        }
-        // 3v for only one rhythm hit on this beat.
-        else if (hits == 1) {
-            cv = CV_3V;
-        }
-        // 5v accent for more than one rhythm hit on this beat.
-        else if (hits > 1) {
-            cv = CV_5V;
-        } else {
-            cv = 0;
-        }
-        analogWrite(CV_OUT, cv);
+        // Advance the beat counter and get the hits on this beat.
+        counter++;
+        hits = current_beat_hits();
+
+        // Get the output cv value for the current beat and set the cv output.
+        analogWrite(CV_OUT, hits_to_cv(hits));
 
         debug();
     }
@@ -116,54 +97,55 @@ void loop() {
 }
 
 // Advance the counter for each polyrhythm and return the number rhythm triggers on this beat.
-byte advance_counters() {
+byte current_beat_hits() {
     byte hits = 0;
-    for (byte i = 0; i < 4; i++) {
+    for (byte i = 0; i < sizeof(R); i++) {
         if (R[i] == 0) {
             continue;
         }
-        C[i]++;
-        if (C[i] >= R[i]) {
-            C[i] = 0;
+        if (counter % R[i] == 0) {
             hits++;
         }
     }
     return hits;
 }
 
-// Check each rhythm knob for a change and update the rhythm and counter values.
+// Return the cv output value for given hit count.
+byte hits_to_cv(byte hits) {
+    // XOR mode enabled will only trigger if one and only one rhythm hits on this beat.
+    if (XOR) {
+        return (hits == 1) ? CV_3V : 0;
+    }
+    // 3v for only one rhythm hit on this beat.
+    else if (hits == 1) {
+        return CV_3V;
+    }
+    // 5v accent for more than one rhythm hit on this beat.
+    else if (hits > 1) {
+        return CV_5V;
+    }
+    return 0;
+}
+
+// Update the rhythm value for each rhythm knob.
 void update_polyrhthms() {
-    bool changed = false;
-    int raw, rhythm;
-    for (byte i = 0; i < 4; i++) {
-        raw = map(analogRead(P[i]), 0, 1023, 0, 16);
+    for (byte i = 0; i < sizeof(P); i++) {
+        int raw = map(analogRead(P[i]), 0, 1023, 0, max_rhythm);
         // When rhythm is 0 CCW, no rhythm is set, otherwise rhythm is
         // triggered every 16 beats to every 1 beat moving CW.
-        rhythm = (raw > 0) ? 17 - raw : 0;
-        if (rhythm != R[i]) {
-            R[i] = rhythm;
-            C[i] = 0;
-            changed = true;
-        }
-    }
-    // Check if all rhythm counters should be reset.
-    if (changed and RESET) {
-        for (byte i = 0; i < 4; i++) {
-            if (rhythm != R[i]) {
-                C[i] = 0;
-            }
-        }
+        R[i] = (raw > 0) ? (max_rhythm + 1) - raw : 0;
     }
 }
 
 void debug() {
     if (DEBUG) {
         Serial.println(
-            "Out CV:   " + String(cv)                       // Print all state vars
-            + "\tS1: " + String(C[0]) + ">" + String(R[0])  //
-            + "\tS2: " + String(C[1]) + ">" + String(R[1])  //
-            + "\tS3: " + String(C[2]) + ">" + String(R[2])  //
-            + "\tS4: " + String(C[3]) + ">" + String(R[3])  //
+            "Hits: " + String(hits)                //
+            + "\tCV: " + String(hits_to_cv(hits))  //
+            + "\tS1: " + String(R[0])              //
+            + "\tS2: " + String(R[1])              //
+            + "\tS3: " + String(R[2])              //
+            + "\tS4: " + String(R[3])              //
         );
     }
 }
