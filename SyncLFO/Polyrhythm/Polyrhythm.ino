@@ -146,6 +146,7 @@ void debug() {
             + "\tS2: " + String(R[1])              //
             + "\tS3: " + String(R[2])              //
             + "\tS4: " + String(R[3])              //
+            + "\tCounter: " + String(counter)      //
         );
     }
 }
