@@ -52,7 +52,8 @@ const bool DEBUG = false;
 bool trig = 0;  // External trigger input detect
 bool old_trig = 0;
 const byte max_rhythm = 16;
-byte hits, counter;
+byte hits;
+unsigned long counter;
 
 byte P[] = {P1, P2, P3, P4};  // Array of knob GPIO identifiers.
 byte R[] = {0, 0, 0, 0};      // Polyrhythm rhythm subdivision choice per knob.
