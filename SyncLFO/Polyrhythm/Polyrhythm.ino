@@ -66,7 +66,8 @@ void setup() {
     pinMode(TRIG_IN, INPUT);  // Trigger in
     pinMode(CV_OUT, OUTPUT);  // Polyrhythm trigger cv output
 
-    // Initialize rhythm and counter arrays.
+    // Initialize logic mode and rhythm/counter arrays.
+    update_mode();
     update_polyrhthms();
 
     // Register setting for high frequency PWM.
