@@ -1,7 +1,7 @@
 /**
  * @file Polyrhythm.ino
  * @author Adam Wonak (https://github.com/awonak/)
- * @brief Generate polyrhythms based on the four 16 step counter knobs for HAGIWO Sync Mod LFO (demo: TODO)
+ * @brief Generate polyrhythms based on 16 step counter knobs for HAGIWO Sync Mod LFO (demo: TODO)
  * @version 0.2
  * @date 2023-05-09
  *
@@ -12,18 +12,18 @@
  * subdivision is every 16 beats. When the knob is fully CW, that is a
  * subdivision of 1 and the polyrhythm will trigger every beat.
  *
- * When in default OR mode, any beat that has more than one rhythm trigger
- * will output an accented 5v, otherwise a single rhythm trigger will output
- * 3v. XOR mode will output 3v triggers when only one rhythm triggers on the
- * beat.
+ * When in OR mode, any beat that has more than one rhythm trigger will output
+ * an accented 5v, otherwise a single rhythm trigger will output 3v.
  *
- * Flags:
+ * Logic Modes:
  *
- * OXR -  The default behavior for overlapping rhythms is to OR, meaning the
- *        polyrhythm will trigger if any of the rhythms hits on the current
- *        beat. Enabling XOR will
+ * OR -  Trigger if any rhythm hits on the beat and will accent with more than one hit.
  *
- * DEBUG  Enable serial debug printing.
+ * XOR - Only trigger if one and only one rhythm hits on this beat.
+ *
+ * NOR - Only trigger when a polyphythm does not hit.
+ *
+ * AND - Only trigger if more than on rhythm hits on this beat.
  *
  */
 
@@ -33,7 +33,7 @@
 #define P1 0  // Polyrhythm count 1
 #define P2 1  // Polyrhythm count 2
 #define P3 3  // Polyrhythm count 3
-#define P4 5  // Polyrhythm count 4
+#define P4 5  // Logic mode selection
 
 #define TRIG_IN 3  // Trigger Input to advance the rhythm counter
 #define CV_OUT 10  // CV Output for polyrhythm triggers
@@ -41,9 +41,6 @@
 // Define constant voltage values for analog cv output.
 #define CV_3V 77
 #define CV_5V 128
-
-// Flag for overriding OR overlapping hit behavior with XOR.
-const bool XOR = false;
 
 // Flag for enabling debug print to serial monitoring output.
 const bool DEBUG = false;
@@ -55,8 +52,14 @@ const byte max_rhythm = 16;
 byte hits;
 unsigned long counter;
 
-byte P[] = {P1, P2, P3, P4};  // Array of knob GPIO identifiers.
-byte R[] = {0, 0, 0, 0};      // Polyrhythm rhythm subdivision choice per knob.
+byte P[] = {P1, P2, P3};  // Array of knob GPIO identifiers.
+byte R[] = {0, 0, 0};     // Polyrhythm rhythm subdivision choice per knob.
+
+enum LogicMode { OR,
+                 XOR,
+                 NOR,
+                 AND };
+LogicMode mode = OR;
 
 void setup() {
     Serial.begin(9600);
@@ -94,6 +97,7 @@ void loop() {
         analogWrite(CV_OUT, 0);
     }
 
+    update_mode();
     update_polyrhthms();
 }
 
@@ -113,19 +117,45 @@ byte current_beat_hits() {
 
 // Return the cv output value for given hit count.
 byte hits_to_cv(byte hits) {
-    // XOR mode enabled will only trigger if one and only one rhythm hits on this beat.
-    if (XOR) {
-        return (hits == 1) ? CV_3V : 0;
+    switch (mode) {
+        // OR mode will trigger if any rhythm hits on the beat and will accent with more than one hit.
+        case OR:
+            if (hits > 1) {
+                return CV_5V;
+            } else {
+                return (hits == 1) ? CV_3V : 0;
+            }
+
+        // XOR mode will only trigger if one and only one rhythm hits on this beat.
+        case XOR:
+            return (hits == 1) ? CV_3V : 0;
+
+        // NOR mode will only trigger if no rhythms hit on this beat.
+        case NOR:
+            return (hits == 0) ? CV_3V : 0;
+
+        // AND mode will only trigger if more than on rhythm hits on this beat.
+        case AND:
+            return (hits > 1) ? CV_3V : 0;
     }
-    // 3v for only one rhythm hit on this beat.
-    else if (hits == 1) {
-        return CV_3V;
+}
+
+// Update the logic mode choice based on the knob value.
+void update_mode() {
+    switch (analogRead(P4) >> 8) {
+        case 0:
+            mode = OR;
+            break;
+        case 1:
+            mode = XOR;
+            break;
+        case 2:
+            mode = NOR;
+            break;
+        case 3:
+            mode = AND;
+            break;
     }
-    // 5v accent for more than one rhythm hit on this beat.
-    else if (hits > 1) {
-        return CV_5V;
-    }
-    return 0;
 }
 
 // Update the rhythm value for each rhythm knob.
@@ -143,10 +173,10 @@ void debug() {
         Serial.println(
             "Hits: " + String(hits)                //
             + "\tCV: " + String(hits_to_cv(hits))  //
-            + "\tS1: " + String(R[0])              //
-            + "\tS2: " + String(R[1])              //
-            + "\tS3: " + String(R[2])              //
-            + "\tS4: " + String(R[3])              //
+            + "\tR1: " + String(R[0])              //
+            + "\tR2: " + String(R[1])              //
+            + "\tR3: " + String(R[2])              //
+            + "\tMode: " + String(mode)            //
             + "\tCounter: " + String(counter)      //
         );
     }
