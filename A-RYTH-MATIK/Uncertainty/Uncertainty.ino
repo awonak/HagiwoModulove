@@ -19,46 +19,79 @@
 #include <Wire.h>
 
 // Encoder & button
-#include <Encoder.h>
-#include <Pushbutton.h>
+#include <SimpleRotary.h>
 
 // Script specific output class.
 #include "output.h"
 
+// OLED Display config
 #define OLED_ADDRESS 0x3C
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
 
-#define OUTPUT_COUNT 6
+// Peripheral input pins
+#define ENCODER_PIN1 2
+#define ENCODER_PIN2 3
+#define ENCODER_SW_PIN 12
+#define CLK_PIN 13
+#define RST_PIN 11
+
+// Output Pins
+#define OUT_CH1 5
+#define OUT_CH2 6
+#define OUT_CH3 7
+#define OUT_CH4 8
+#define OUT_CH5 9
+#define OUT_CH6 10
+#define LED_CH1 14
+#define LED_CH2 15
+#define LED_CH3 16
+#define LED_CH4 0
+#define LED_CH5 1
+#define LED_CH6 17
+#define CLOCK_LED 4
 
 // Input pins
 #define CLOCK_IN 13  // Trigger Input to advance the rhythm counter
 #define RESET_IN 11  // Trigger Input to reset the rhythm counter
 
-// Output pins
-#define CLOCK_LED 4
-
-Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
-Encoder encoder(3, 2);
-Pushbutton button(12);
-ProbablisticOutput outputs[6];
+// Other config definitions
+#define OUTPUT_COUNT 6
 
 // Flag for enabling debug print to serial monitoring output.
-// NOTE: debug will enable the serial port which locks LED 4 & 5 on HIGH.
-const bool DEBUG = false;
+// Note: this affects performance and locks LED 4 & 5 on HIGH.
+// #define DEBUG
+
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
+SimpleRotary encoder(ENCODER_PIN1, ENCODER_PIN2, ENCODER_SW_PIN);
+ProbablisticOutput outputs[6];
 
 // Script state variables.
 bool trig = 0;  // External trigger input detect
 bool old_trig = 0;
 
+byte selected_out = 0;
+byte selected_param = 0;
+
+// State variables for tracking OLED refresh rate.
+const int refresh_ms = 100;
+uint32_t last_ui_update = 0;
+bool state_changed = true;
+
 void setup() {
+#ifdef DEBUG
+    // Only enable Serial monitoring if DEBUG is defined.
+    // Note: this affects performance and locks LED 4 & 5 on HIGH.
+    Serial.begin(9600);
+#endif
+
     // Initialize each of the outputs with it's GPIO pins and probability.
-    outputs[0].Init(5, 14, 0.96);
-    outputs[1].Init(6, 15, 0.82);
-    outputs[2].Init(7, 16, 0.64);
-    outputs[3].Init(8, 0, 0.48);
-    outputs[4].Init(9, 1, 0.32);
-    outputs[5].Init(10, 17, 0.18);
+    outputs[0].Init(OUT_CH1, LED_CH1, 0.96);
+    outputs[1].Init(OUT_CH2, LED_CH2, 0.82);
+    outputs[2].Init(OUT_CH3, LED_CH3, 0.64);
+    outputs[3].Init(OUT_CH4, LED_CH4, 0.48);
+    outputs[4].Init(OUT_CH5, LED_CH5, 0.32);
+    outputs[5].Init(OUT_CH6, LED_CH6, 0.18);
 
     // CLOCK LED (DIGITAL)
     pinMode(CLOCK_LED, OUTPUT);
@@ -71,8 +104,6 @@ void setup() {
     display.setTextColor(WHITE);
     display.clearDisplay();
     display.display();
-
-    if (DEBUG) Serial.begin(9600);
 }
 
 void loop() {
@@ -96,4 +127,80 @@ void loop() {
             outputs[i].Off();
         }
     }
+
+    // Read for a button press event.
+    if (encoder.push()) {
+        selected_param = ++selected_param % 3;
+        state_changed = true;
+    }
+
+    // Read encoder for a change in direction and update the selected parameter.
+    UpdateParameter(encoder.rotate());
+
+    // Render any new UI changes to the OLED display.
+    UpdateDisplay();
+}
+
+void UpdateParameter(byte encoder_dir) {
+    if (selected_param == 0) UpdateOutput(encoder_dir);
+    if (selected_param == 1) UpdateMode(encoder_dir);
+    if (selected_param == 2) UpdateProb(encoder_dir);
+}
+
+void UpdateOutput(byte encoder_dir) {
+    if (encoder_dir == 0) return;
+    if (encoder_dir == 1 && selected_out < OUTPUT_COUNT - 1) selected_out++;
+    if (encoder_dir == 2 && selected_out > 0) selected_out--;
+    state_changed = true;
+}
+
+void UpdateMode(byte encoder_dir) {
+    if (encoder_dir == 0) return;
+    if (encoder_dir == 1) outputs[selected_out].SetMode(Mode::FLIP);
+    if (encoder_dir == 2) outputs[selected_out].SetMode(Mode::TRIGGER);
+    state_changed = true;
+}
+
+void UpdateProb(byte encoder_dir) {
+    if (encoder_dir == 0) return;
+    if (encoder_dir == 1) outputs[selected_out].IncProb();
+    if (encoder_dir == 2) outputs[selected_out].DecProb();
+    state_changed = true;
+}
+
+void UpdateDisplay() {
+    if (!state_changed) return;
+    state_changed = false;
+    display.clearDisplay();
+
+    // Indicator for which config menu is selected.
+    int x1 = 22, y1 = 13;
+    if (selected_param == 0) y1 = 13;
+    if (selected_param == 1) y1 = 31;
+    if (selected_param == 2) y1 = 49;
+    display.fillTriangle(x1, y1, x1 - 3, y1 - 3, x1 - 3, y1 + 3, WHITE);
+
+    // Display the 6 output channel boxes.
+    int boxSize = 8;
+    for (int i = 1; i < OUTPUT_COUNT + 1; i++) {
+        display.drawRect(boxSize, i * boxSize, boxSize - 1, boxSize - 1, WHITE);
+    }
+    display.fillRect(boxSize, (selected_out * boxSize) + boxSize, boxSize - 1, boxSize - 1, WHITE);
+
+    // Display config param.
+    display.setCursor(25, 18);
+    display.println("Output " + String(selected_out + 1));
+    display.setCursor(80, 18);
+
+    display.setCursor(25, 36);
+    display.println("Mode:");
+    display.setCursor(80, 36);
+    display.println(outputs[selected_out].DisplayMode());
+
+    display.setCursor(25, 54);
+    display.println("Prob:");
+    display.setCursor(80, 54);
+    display.println(outputs[selected_out].GetProb(), 2);
+
+    display.display();
 }
