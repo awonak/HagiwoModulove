@@ -37,6 +37,7 @@
 #define RST_PIN 11
 
 // Output Pins
+#define CLOCK_LED 4
 #define OUT_CH1 5
 #define OUT_CH2 6
 #define OUT_CH3 7
@@ -49,14 +50,6 @@
 #define LED_CH4 0
 #define LED_CH5 1
 #define LED_CH6 17
-#define CLOCK_LED 4
-
-// Input pins
-#define CLOCK_IN 13  // Trigger Input to advance the rhythm counter
-#define RESET_IN 11  // Trigger Input to reset the rhythm counter
-
-// Other config definitions
-#define OUTPUT_COUNT 6
 
 // Flag for enabling debug print to serial monitoring output.
 // Note: this affects performance and locks LED 4 & 5 on HIGH.
@@ -65,6 +58,10 @@
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 SimpleRotary encoder(ENCODER_PIN1, ENCODER_PIN2, ENCODER_SW_PIN);
 ProbablisticOutput outputs[6];
+
+// Script config definitions
+const uint8_t OUTPUT_COUNT = 6;  // Count of outputs.
+const uint8_t PARAM_COUNT = 3;  // Count of editable parameters.
 
 // Script state variables.
 bool trig = 0;  // External trigger input detect
@@ -79,9 +76,9 @@ uint32_t last_ui_update = 0;
 bool state_changed = true;
 
 void setup() {
+// Only enable Serial monitoring if DEBUG is defined.
+// Note: this affects performance and locks LED 4 & 5 on HIGH.
 #ifdef DEBUG
-    // Only enable Serial monitoring if DEBUG is defined.
-    // Note: this affects performance and locks LED 4 & 5 on HIGH.
     Serial.begin(9600);
 #endif
 
@@ -108,7 +105,7 @@ void setup() {
 
 void loop() {
     old_trig = trig;
-    trig = digitalRead(CLOCK_IN);
+    trig = digitalRead(CLK_PIN);
 
     // Clock In LED indicator mirrors the clock input.
     digitalWrite(CLOCK_LED, trig);
@@ -130,11 +127,12 @@ void loop() {
 
     // Read for a button press event.
     if (encoder.push()) {
-        selected_param = ++selected_param % 3;
+        selected_param = ++selected_param % PARAM_COUNT;
         state_changed = true;
     }
 
     // Read encoder for a change in direction and update the selected parameter.
+    // rotate() returns 0 for unchanged, 1 for increment, 2 for decrement.
     UpdateParameter(encoder.rotate());
 
     // Render any new UI changes to the OLED display.
@@ -173,8 +171,8 @@ void UpdateDisplay() {
     state_changed = false;
     display.clearDisplay();
 
-    // Indicator for which config menu is selected.
-    int x1 = 22, y1 = 13;
+    // Indicator for which config parameter is selected.
+    int x1 = 22, y1 = 13;  // Set default indicator point origin.
     if (selected_param == 0) y1 = 13;
     if (selected_param == 1) y1 = 31;
     if (selected_param == 2) y1 = 49;
@@ -187,7 +185,7 @@ void UpdateDisplay() {
     }
     display.fillRect(boxSize, (selected_out * boxSize) + boxSize, boxSize - 1, boxSize - 1, WHITE);
 
-    // Display config param.
+    // Display config param label and value.
     display.setCursor(25, 18);
     display.println("Output " + String(selected_out + 1));
     display.setCursor(80, 18);
