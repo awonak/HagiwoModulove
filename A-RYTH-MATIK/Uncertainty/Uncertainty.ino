@@ -61,7 +61,7 @@ ProbablisticOutput outputs[6];
 
 // Script config definitions
 const uint8_t OUTPUT_COUNT = 6;  // Count of outputs.
-const uint8_t PARAM_COUNT = 3;  // Count of editable parameters.
+const uint8_t PARAM_COUNT = 3;   // Count of editable parameters.
 
 // Script state variables.
 bool trig = 0;  // External trigger input detect
@@ -134,7 +134,6 @@ void loop() {
     // Read encoder for a change in direction and update the selected parameter.
     // rotate() returns 0 for unchanged, 1 for increment, 2 for decrement.
     UpdateParameter(encoder.rotate());
-
     // Render any new UI changes to the OLED display.
     UpdateDisplay();
 }

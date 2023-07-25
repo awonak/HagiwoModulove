@@ -1,7 +1,9 @@
 #pragma once
 
 enum Mode {
+    // Follow the state of the input clock.
     TRIGGER,
+    // Toggle between on/off with each clock input rising edge.
     FLIP,
 };
 
@@ -20,7 +22,7 @@ class ProbablisticOutput {
     led pin pair.
       \param cv_pin gpio pin for the cv output.
       \param led_pin gpio pin for the LED.
-      \param probability percentage chance to trigger.
+      \param probability percentage chance to trigger as a float from 0 to 1.
     */
     void Init(uint8_t cv_pin, uint8_t led_pin, float probability) {
         Init(cv_pin, led_pin, probability, TRIGGER);
@@ -31,8 +33,8 @@ class ProbablisticOutput {
     led pin pair.
       \param cv_pin gpio pin for the cv output.
       \param led_pin gpio pin for the LED.
-      \param probability percentage chance to trigger.
-      \param mode percentage chance to trigger.
+      \param probability percentage chance to trigger as a float from 0 to 1.
+      \param mode defines the behavior of the rising / falling clock input on this output.
     */
     void Init(uint8_t cv_pin, uint8_t led_pin, float probability, Mode mode) {
         pinMode(cv_pin, OUTPUT);   // Gate/Trigger Output
