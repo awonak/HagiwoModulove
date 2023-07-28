@@ -1,8 +1,8 @@
 # Hagiwo/Modulove
 
-This is a collection of open source hardware and software files related to Modulove hardware remixes of Hagiwo modules.
+This is a collection of open source hardware and software files related to Modulove hardware remixes of Hagiwo modules. This repository contains original alternative firmwares for Modulove's [Sync LFO](https://modulove.io/synclfo/) and [A-RYTH-MATIK](https://modulove.io/arythmatik/).
 
-Original hardware/firmware and design can be found here:
+Original open source hardware/firmware and design can be found here:
 
 Hagiwo
 
