@@ -97,7 +97,7 @@ void setup() {
 #endif
 
     // Initial random seed.
-    UpdateSeed(seed);
+    Reseed();
 
     // Initialize each of the outputs with it's GPIO pins and probability.
     outputs[0].Init(OUT_CH1, LED_CH1, 0.96);
@@ -171,13 +171,13 @@ void loop() {
 
 // Reset the seed and pattern length to restart the psudo random deterministic pattern.
 void Reset() {
-    UpdateSeed(seed);
+    Reseed();
     step_count = 0;
     state_changed = true;
 }
 
-// Update the random number generator with a new seed.
-void UpdateSeed(uint16_t seed) {
+// Reseed the random number generator with the current seed.
+void Reseed() {
     randomSeed(seed);
 }
 
