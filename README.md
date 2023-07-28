@@ -1,13 +1,22 @@
-# Hagiwo/Modulove Modules
+# Hagiwo/Modulove
 
 This is a collection of open source hardware and software files related to Modulove hardware remixes of Hagiwo modules.
 
-## Hardware
+Original hardware/firmware and design can be found here:
 
-* [A•RYTH•MATIK](A-RYTH-MATIK/)
-* [Sync LFO](SyncLFO/)
+Hagiwo
 
-## Software
+* [6 Ch Gate Seq](https://note.com/solder_state/n/n17c69afd484d)
+* [Euclidean Rhythms](https://note.com/solder_state/n/n433b32ea6dbc)
+* [Sync LFO](https://note.com/solder_state/n/n4c600f2431c3)
+* [Bezier Curve](https://note.com/solder_state/n/n39aacefd73a3)
+
+Modulove
+
+* [A-RYTH-MATIK](https://github.com/modulove/A-RYTH-MATIK)
+* [Sync LFO](https://github.com/modulove/CATs-Eurosynth/tree/main/Modules/HAGIWO/Sync%20LFO)
+
+## Firmware Development
 
 ### Configure Visual Studio Code for your IDE
 
@@ -52,3 +61,10 @@ To make sure the Arduino extension does not overwrite these changes, update `.vs
 ```
 
 You're now ready to start hacking!
+
+### Third-party Arduino Libraries
+
+* [Adafruit-GFX-Library](https://github.com/adafruit/Adafruit-GFX-Library)
+* [Adafruit_SSD1306](https://github.com/adafruit/Adafruit_SSD1306)
+* [Simple Rotary](https://github.com/mprograms/SimpleRotary/tree/master)
+* [AVR IO](https://github.com/avrdudes/avr-libc)
