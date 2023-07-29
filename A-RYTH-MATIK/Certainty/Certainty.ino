@@ -188,7 +188,7 @@ void InitState() {
     uint8_t _step_length;
     EEPROM.get(LENGTH_ADDR, _step_length);
     if (_step_length != 0) {
-        step_length = constrain(_step_length, MIN_LENGTH, MAX_LENGTH);
+        SetLength(_step_length);
     }
 }
 
@@ -203,6 +203,14 @@ void Reset() {
 void NewSeed() {
     seed = random(UINT16_MAX);
     EEPROM.put(SEED_ADDR, seed);
+    state_changed = true;
+}
+
+// Set the pattern length and store it in EEPROM.
+void SetLength(uint8_t _step_length) {
+    step_length = constrain(_step_length, MIN_LENGTH, MAX_LENGTH);
+    EEPROM.put(LENGTH_ADDR, step_length);
+    state_changed = true;
 }
 
 // Reseed the random number generator with the current seed.
@@ -220,16 +228,13 @@ void UpdateParameter(byte encoder_dir) {
 void UpdateSeed(byte dir) {
     if (dir == 0) return;
     NewSeed();
-    Reset();
 }
 
 // Adjust the step length.
 void UpdateLength(byte dir) {
     if (dir == 0) return;
-    if (dir == 1 && step_length < MAX_LENGTH - 1) step_length++;
-    if (dir == 2 && step_length > MIN_LENGTH) step_length--;
-    EEPROM.put(LENGTH_ADDR, step_length);
-    state_changed = true;
+    if (dir == 1 && step_length <= MAX_LENGTH) SetLength(++step_length);
+    if (dir == 2 && step_length >= MIN_LENGTH) SetLength(--step_length);
 }
 
 // Display the current state of the module params.
