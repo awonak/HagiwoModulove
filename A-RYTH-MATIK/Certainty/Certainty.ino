@@ -201,8 +201,10 @@ void Reset() {
 
 // Generate a new random seed and store it in EEPROM.
 void NewSeed() {
+    randomSeed(micros());
     seed = random(UINT16_MAX);
     EEPROM.put(SEED_ADDR, seed);
+    Reseed();
     state_changed = true;
 }
 
