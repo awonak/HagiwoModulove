@@ -16,6 +16,7 @@
 // Oled setting
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+#include <EEPROM.h>
 #include <Fonts/FreeMono9pt7b.h>
 #include <Fonts/FreeMonoBold9pt7b.h>
 #include <Wire.h>
@@ -67,6 +68,10 @@ const uint8_t PARAM_COUNT = 3;   // Count of editable parameters [seed, length]
 const uint8_t MIN_LENGTH = 4;
 const uint8_t MAX_LENGTH = 64;
 
+// EEPROM address references for saving state.
+const int SEED_ADDR = 0;
+const int LENGTH_ADDR = sizeof(uint16_t);
+
 // Enum constants for clk input rising/falling state.
 enum InputState {
     STATE_UNCHANGED,
@@ -76,8 +81,8 @@ enum InputState {
 InputState clk_state = STATE_UNCHANGED;
 
 // Script state variables.
-uint16_t seed = 27926;     // Hex 0x6d16 used as initial random seed
-uint8_t step_length = 16;  // Repeat 16 psudo random triggers
+uint16_t seed;             // Store the current seed used for psudo random number generator
+uint8_t step_length = 16;  // Length of psudo random trigger sequence
 uint8_t step_count = 0;    // Count of trigger steps since reset
 uint8_t selected_param = 0;
 
@@ -96,8 +101,8 @@ void setup() {
     Serial.begin(9600);
 #endif
 
-    // Initial random seed.
-    Reseed();
+    // Initial random seed and step length from EEPROM or default values.
+    InitState();
 
     // Initialize each of the outputs with it's GPIO pins and probability.
     outputs[0].Init(OUT_CH1, LED_CH1, 0.96);
@@ -146,7 +151,7 @@ void loop() {
     // When step count wraps, reset step count and reseed.
     if (clk_state == STATE_RISING) {
         step_count = ++step_count % step_length;
-        if (step_count == 0) UpdateSeed(seed);
+        if (step_count == 0) Reseed();
         state_changed = true;
     }
 
@@ -169,11 +174,35 @@ void loop() {
     UpdateDisplay();
 }
 
+// Initialize random seed and step length from EEPROM or default values.
+void InitState() {
+    // Read previously stored seed from EEPROM memory. If it is empty, generate a new random seed.
+    uint16_t _seed;
+    EEPROM.get(SEED_ADDR, _seed);
+    if (_seed != 0) {
+        seed = _seed;
+    } else {
+        NewSeed();
+    }
+    // Read previously stored step_length from EEPROM memory. Update step_length if the value is non-zero.
+    uint8_t _step_length;
+    EEPROM.get(LENGTH_ADDR, _step_length);
+    if (_step_length != 0) {
+        step_length = constrain(_step_length, MIN_LENGTH, MAX_LENGTH);
+    }
+}
+
 // Reset the seed and pattern length to restart the psudo random deterministic pattern.
 void Reset() {
     Reseed();
     step_count = 0;
     state_changed = true;
+}
+
+// Generate a new random seed and store it in EEPROM.
+void NewSeed() {
+    seed = random(UINT16_MAX);
+    EEPROM.put(SEED_ADDR, seed);
 }
 
 // Reseed the random number generator with the current seed.
@@ -190,7 +219,7 @@ void UpdateParameter(byte encoder_dir) {
 // Right now just randomize up or down from current seed.
 void UpdateSeed(byte dir) {
     if (dir == 0) return;
-    seed = random(0, UINT16_MAX);
+    NewSeed();
     Reset();
 }
 
@@ -199,6 +228,7 @@ void UpdateLength(byte dir) {
     if (dir == 0) return;
     if (dir == 1 && step_length < MAX_LENGTH - 1) step_length++;
     if (dir == 2 && step_length > MIN_LENGTH) step_length--;
+    EEPROM.put(LENGTH_ADDR, step_length);
     state_changed = true;
 }
 
