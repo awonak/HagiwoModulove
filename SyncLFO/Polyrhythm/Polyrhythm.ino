@@ -46,8 +46,8 @@
 const bool DEBUG = false;
 
 // Script state variables.
-bool trig = 0;  // External trigger input detect
-bool old_trig = 0;
+bool clk = 0;  // External trigger input detect
+bool old_clk = 0;
 const byte max_rhythm = 16;
 byte hits;
 unsigned long counter;
@@ -78,11 +78,11 @@ void setup() {
 }
 
 void loop() {
-    old_trig = trig;
-    trig = digitalRead(TRIG_IN);
+    old_clk = clk;
+    clk = digitalRead(TRIG_IN);
 
     // Detect if new trigger received, advance counter and check for hit on the beat.
-    if (old_trig == 0 && trig == 1) {
+    if (old_clk == 0 && clk == 1) {
         // Advance the beat counter and get the hits on this beat.
         counter++;
         hits = current_beat_hits();
@@ -94,7 +94,7 @@ void loop() {
     }
 
     // Detect if trigger has just ended and turn off the trigger cv output.
-    if (old_trig == 1 && trig == 0) {
+    if (old_clk == 1 && clk == 0) {
         analogWrite(CV_OUT, 0);
     }
 

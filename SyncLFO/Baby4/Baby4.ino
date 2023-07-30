@@ -20,8 +20,8 @@
 #define TRIG_IN 3  // Trigger Input to advance step
 #define CV_OUT 10  // CV Output for current step
 
-bool trig = 1;  // External trigger input detect
-bool old_trig = 0;
+bool clk = 1;  // External trigger input detect
+bool old_clk = 0;
 
 const byte P[] = {P1, P2, P3, P4};  // Array of knob GPIO pin identifiers.
 
@@ -44,11 +44,11 @@ void setup() {
 }
 
 void loop() {
-    old_trig = trig;
-    trig = digitalRead(TRIG_IN);
+    old_clk = clk;
+    clk = digitalRead(TRIG_IN);
 
     // Detect if new trigger received and advance step.
-    if (old_trig == 0 && trig == 1) {
+    if (old_clk == 0 && clk == 1) {
         step = (step + 1) % max_step;
     }
 

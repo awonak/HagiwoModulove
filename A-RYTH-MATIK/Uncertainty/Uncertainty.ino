@@ -64,8 +64,8 @@ const uint8_t OUTPUT_COUNT = 6;  // Count of outputs.
 const uint8_t PARAM_COUNT = 3;   // Count of editable parameters.
 
 // Script state variables.
-bool trig = 0;  // External trigger input detect
-bool old_trig = 0;
+bool clk = 0;  // External trigger input detect
+bool old_clk = 0;
 
 byte selected_out = 0;
 byte selected_param = 0;
@@ -95,7 +95,7 @@ void setup() {
 
     // OLED Display configuration.
     delay(1000);
-    display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
+    display.begin(SSD1306_SWITCHCAPVCC, OLED_ADDRESS);
     display.setTextSize(1);
     display.setFont(&FreeMono9pt7b);
     display.setTextColor(WHITE);
@@ -104,22 +104,22 @@ void setup() {
 }
 
 void loop() {
-    old_trig = trig;
-    trig = digitalRead(CLK_PIN);
+    old_clk = clk;
+    clk = digitalRead(CLK_PIN);
 
     // Clock In LED indicator mirrors the clock input.
-    digitalWrite(CLOCK_LED, trig);
+    digitalWrite(CLOCK_LED, clk);
 
     // Input clock has gone high, call each output's On() for a chance to
     // trigger that output.
-    if (old_trig == 0 && trig == 1) {
+    if (old_clk == 0 && clk == 1) {
         for (int i = 0; i < OUTPUT_COUNT; i++) {
             outputs[i].On();
         }
     }
 
     // Input clock has gone low, turn off Outputs.
-    if (old_trig == 1 && trig == 0) {
+    if (old_clk == 1 && clk == 0) {
         for (int i = 0; i < OUTPUT_COUNT; i++) {
             outputs[i].Off();
         }
@@ -134,6 +134,7 @@ void loop() {
     // Read encoder for a change in direction and update the selected parameter.
     // rotate() returns 0 for unchanged, 1 for increment, 2 for decrement.
     UpdateParameter(encoder.rotate());
+
     // Render any new UI changes to the OLED display.
     UpdateDisplay();
 }
