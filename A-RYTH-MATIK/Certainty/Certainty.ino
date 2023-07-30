@@ -17,8 +17,6 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 #include <EEPROM.h>
-#include <Fonts/FreeMono9pt7b.h>
-#include <Fonts/FreeMonoBold9pt7b.h>
 #include <Wire.h>
 
 // Encoder & button
@@ -63,10 +61,10 @@ SimpleRotary encoder(ENCODER_PIN1, ENCODER_PIN2, ENCODER_SW_PIN);
 FixedProbablisticOutput outputs[6];
 
 // Script config definitions
-const uint8_t OUTPUT_COUNT = 6;  // Count of outputs.
-const uint8_t PARAM_COUNT = 3;   // Count of editable parameters [seed, length]
+const uint8_t OUTPUT_COUNT = 6;
+const uint8_t PARAM_COUNT = 3;   // [None, Seed, Length]
 const uint8_t MIN_LENGTH = 4;
-const uint8_t MAX_LENGTH = 64;
+const uint8_t MAX_LENGTH = 32;
 
 // EEPROM address references for saving state.
 const int SEED_ADDR = 0;
@@ -84,7 +82,7 @@ InputState clk_state = STATE_UNCHANGED;
 uint16_t seed;             // Store the current seed used for psudo random number generator
 uint8_t step_length = 16;  // Length of psudo random trigger sequence
 uint8_t step_count = 0;    // Count of trigger steps since reset
-uint8_t selected_param = 0;
+uint8_t selected_param = 0;  // 0 = None, 1 = Seed, 2 = Length.
 
 int clk = 0;  // External CLK trigger input read value
 int old_clk = 0;
@@ -119,7 +117,6 @@ void setup() {
     delay(1000);
     display.begin(SSD1306_SWITCHCAPVCC, OLED_ADDRESS);
     display.setTextSize(1);
-    display.setFont(&FreeMono9pt7b);
     display.setTextColor(WHITE);
     display.clearDisplay();
     display.display();
@@ -222,8 +219,8 @@ void Reseed() {
 
 // Update the current selected parameter with the current movement of the encoder.
 void UpdateParameter(byte encoder_dir) {
-    if (selected_param == 0) UpdateSeed(encoder_dir);
-    if (selected_param == 1) UpdateLength(encoder_dir);
+    if (selected_param == 1) UpdateSeed(encoder_dir);
+    if (selected_param == 2) UpdateLength(encoder_dir);
 }
 
 // Right now just randomize up or down from current seed.
@@ -245,18 +242,60 @@ void UpdateDisplay() {
     state_changed = false;
     display.clearDisplay();
 
-    // Display config param label and value.
-    display.setFont((selected_param == 0) ? &FreeMonoBold9pt7b : &FreeMono9pt7b);
-    display.setCursor(4, 18);
-    display.println("Seed: " + String(seed, HEX));
+    // Draw a die and the hex seed value on the top.
+    display.drawRoundRect(38, 1, 9, 9, 2, 1);
+    display.drawPixel(41, 3, 1);
+    display.drawPixel(44, 6, 1);
+    display.setCursor(50, 2);
+    display.println(String(seed, HEX));
 
-    display.setFont((selected_param == 1) ? &FreeMonoBold9pt7b : &FreeMono9pt7b);
-    display.setCursor(4, 36);
-    display.println("Length: " + String(step_length));
+    // Show edit icon for seed if it's selected.
+    if (selected_param == 1) {
+        display.drawChar(28, 1, 0x10, 1, 0, 1);
+    }
 
-    display.setFont(&FreeMono9pt7b);
-    display.setCursor(4, 54);
+    // Draw boxes for pattern length.
+    {
+        int start = 20;
+        int top = 14;
+        int left = start;
+        int boxSize = 7;
+        int padding = 2;
+        int wrap = 8;
+
+        for (int i = 1; i <= step_length; i++) {
+            // Determine how much top padding to use.
+            int _top = top;
+            if(step_length <= 8) _top += 7;
+            if(step_length <= 16) _top += 5;
+            if(step_length <= 24) _top += 3;
+            // Draw box, fill current step.
+            (i == step_count+1)
+                ? display.fillRect(left, _top, boxSize, boxSize, 1)
+                : display.drawRect(left, _top, boxSize, boxSize, 1);
+            
+            // Advance the draw cursors.
+            left += boxSize + padding + 1;
+
+            // Show edit icon for length if it's selected.
+            if (selected_param == 2 && i == step_length) {
+                display.drawChar(left, _top, 0x11, 1, 0, 1);
+            }
+
+            // Wrap the box draw cursor if we hit wrap count.
+            if (i % wrap == 0) {
+                top += boxSize + padding;
+                left = start;
+            }
+            
+        }
+    }
+
+    // Draw the current step and length on the bottom.
+    display.setCursor(8, 56);
     display.println("Step:" + String(step_count + 1));
+    display.setCursor(64, 56);
+    display.println("Length:" + String(step_length));
 
     display.display();
 }
