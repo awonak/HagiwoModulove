@@ -73,7 +73,7 @@ byte selected_param = 0;
 // State variables for tracking OLED refresh rate.
 const int refresh_ms = 100;
 uint32_t last_ui_update = 0;
-bool state_changed = true;
+bool update_display = true;
 
 void setup() {
 // Only enable Serial monitoring if DEBUG is defined.
@@ -128,7 +128,7 @@ void loop() {
     // Read for a button press event.
     if (encoder.push()) {
         selected_param = ++selected_param % PARAM_COUNT;
-        state_changed = true;
+        update_display = true;
     }
 
     // Read encoder for a change in direction and update the selected parameter.
@@ -149,26 +149,26 @@ void UpdateOutput(byte encoder_dir) {
     if (encoder_dir == 0) return;
     if (encoder_dir == 1 && selected_out < OUTPUT_COUNT - 1) selected_out++;
     if (encoder_dir == 2 && selected_out > 0) selected_out--;
-    state_changed = true;
+    update_display = true;
 }
 
 void UpdateMode(byte encoder_dir) {
     if (encoder_dir == 0) return;
     if (encoder_dir == 1) outputs[selected_out].SetMode(Mode::FLIP);
     if (encoder_dir == 2) outputs[selected_out].SetMode(Mode::TRIGGER);
-    state_changed = true;
+    update_display = true;
 }
 
 void UpdateProb(byte encoder_dir) {
     if (encoder_dir == 0) return;
     if (encoder_dir == 1) outputs[selected_out].IncProb();
     if (encoder_dir == 2) outputs[selected_out].DecProb();
-    state_changed = true;
+    update_display = true;
 }
 
 void UpdateDisplay() {
-    if (!state_changed) return;
-    state_changed = false;
+    if (!update_display) return;
+    update_display = false;
     display.clearDisplay();
 
     // Indicator for which config parameter is selected.

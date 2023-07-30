@@ -82,15 +82,15 @@ InputState clk_state = STATE_UNCHANGED;
 // Enum constants for user editable parameters.
 enum Parameter {
     PARAM_NONE,
-    PARAM_SEED,
     PARAM_LENGTH,
+    PARAM_SEED,
     PARAM_LAST,
 };
 Parameter selected_param = PARAM_NONE;
 
 // Script state variables.
 uint16_t seed;             // Store the current seed used for psudo random number generator
-uint8_t step_length = 16;  // Length of psudo random trigger sequence
+uint8_t step_length = 16;  // Length of psudo random trigger sequence (default 16 steps)
 uint8_t step_count = 0;    // Count of trigger steps since reset
 
 int clk = 0;  // External CLK trigger input read value
@@ -98,8 +98,9 @@ int old_clk = 0;
 int rst = 0;  // External RST trigger input read value
 int old_rst = 0;
 
-// State variables for tracking OLED refresh changes.
+// State variables for tracking OLED and editable parameter changes.
 bool state_changed = true;
+bool update_display = true;
 
 void setup() {
 // Only enable Serial monitoring if DEBUG is defined.
@@ -158,7 +159,7 @@ void loop() {
     if (clk_state == STATE_RISING) {
         step_count = ++step_count % step_length;
         if (step_count == 0) Reseed();
-        state_changed = true;
+        update_display = true;
     }
 
     for (int i = 0; i < OUTPUT_COUNT; i++) {
@@ -169,7 +170,8 @@ void loop() {
     // Read for a button press event.
     if (encoder.push()) {
         selected_param = static_cast<Parameter>((selected_param + 1) % PARAM_LAST);
-        state_changed = true;
+        SaveChanges();  // Save changes made from previous parameter edits.
+        update_display = true;
     }
 
     // Read encoder for a change in direction and update the selected parameter.
@@ -202,23 +204,31 @@ void InitState() {
 void Reset() {
     Reseed();
     step_count = 0;
-    state_changed = true;
+    update_display = true;
 }
 
-// Generate a new random seed and store it in EEPROM.
+// Generate a new random seed.
 void NewSeed() {
     randomSeed(micros());
     seed = random(UINT16_MAX);
-    EEPROM.put(SEED_ADDR, seed);
     Reseed();
+    update_display = true;
     state_changed = true;
 }
 
-// Set the pattern length and store it in EEPROM.
+// Set the pattern length..
 void SetLength(uint8_t _step_length) {
     step_length = constrain(_step_length, MIN_LENGTH, MAX_LENGTH);
-    EEPROM.put(LENGTH_ADDR, step_length);
+    update_display = true;
     state_changed = true;
+}
+
+// Save state to EEPROM if state has changed.
+void SaveChanges() {
+    if (!state_changed) return;
+    state_changed = false;
+    EEPROM.put(LENGTH_ADDR, step_length);
+    EEPROM.put(SEED_ADDR, seed);
 }
 
 // Reseed the random number generator with the current seed.
@@ -232,39 +242,32 @@ void UpdateParameter(byte encoder_dir) {
     if (selected_param == PARAM_LENGTH) UpdateLength(encoder_dir);
 }
 
-// Right now just randomize up or down from current seed.
+// Randomize the current seed if the encoder has moved in either direction.
 void UpdateSeed(byte dir) {
     if (dir != 0) NewSeed();
 }
 
-// Adjust the step length.
+// Adjust the step length for the given input direction (1=increment, 2=decrement).
 void UpdateLength(byte dir) {
     if (dir == 1 && step_length <= MAX_LENGTH) SetLength(++step_length);
     if (dir == 2 && step_length >= MIN_LENGTH) SetLength(--step_length);
 }
 
-// Display the current state of the module params.
+// UI display of app state.
 void UpdateDisplay() {
-    if (!state_changed) return;
-    state_changed = false;
+    if (!update_display) return;
+    update_display = false;
     display.clearDisplay();
 
-    // Draw a die and the hex seed value on the top.
-    display.drawRoundRect(38, 1, 9, 9, 2, 1);
-    display.drawPixel(41, 3, 1);
-    display.drawPixel(44, 6, 1);
-    display.setCursor(50, 2);
-    display.println(String(seed, HEX));
-
-    // Show edit icon for seed if it's selected.
-    if (selected_param == PARAM_SEED) {
-        display.drawChar(28, 1, 0x10, 1, 0, 1);
-    }
+    // Draw app title.
+    display.setCursor(40, 0);
+    display.println("CERTAINTY");
+    display.drawFastHLine(0, 10, SCREEN_WIDTH, WHITE);
 
     // Draw boxes for pattern length.
     {
-        int start = 20;
-        int top = 14;
+        int start = 26;
+        int top = 16;
         int left = start;
         int boxSize = 7;
         int padding = 2;
@@ -273,14 +276,14 @@ void UpdateDisplay() {
         for (int i = 1; i <= step_length; i++) {
             // Determine how much top padding to use.
             int _top = top;
-            if(step_length <= 8) _top += 7;
-            if(step_length <= 16) _top += 5;
-            if(step_length <= 24) _top += 3;
+            if (step_length <= 8) _top += 8;
+            if (step_length <= 16) _top += 6;
+            if (step_length <= 24) _top += 4;
             // Draw box, fill current step.
-            (i == step_count+1)
+            (i == step_count + 1)
                 ? display.fillRect(left, _top, boxSize, boxSize, 1)
                 : display.drawRect(left, _top, boxSize, boxSize, 1);
-            
+
             // Advance the draw cursors.
             left += boxSize + padding + 1;
 
@@ -294,15 +297,27 @@ void UpdateDisplay() {
                 top += boxSize + padding;
                 left = start;
             }
-            
         }
     }
 
-    // Draw the current step and length on the bottom.
+    // Draw the current step and length on the bottom left.
     display.setCursor(8, 56);
-    display.println("Step:" + String(step_count + 1));
-    display.setCursor(64, 56);
-    display.println("Length:" + String(step_length));
+    String str_step = (step_count < 9)
+                          ? " " + String(step_count + 1)
+                          : String(step_count + 1);
+    display.println("Step:" + str_step + "/" + String(step_length));
+
+    // Draw a die and the hex seed value on the bottom right.
+    display.drawRoundRect(82, 55, 9, 9, 2, 1);
+    display.drawPixel(85, 57, 1);
+    display.drawPixel(87, 60, 1);
+    display.setCursor(94, 56);
+    display.println(String(seed, HEX));
+
+    // Show edit icon for seed if it's selected.
+    if (selected_param == PARAM_SEED) {
+        display.drawChar(120, 56, 0x11, 1, 0, 1);
+    }
 
     display.display();
 }
