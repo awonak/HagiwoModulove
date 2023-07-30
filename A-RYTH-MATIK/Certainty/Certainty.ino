@@ -10,7 +10,9 @@
  * Connect a trigger or gate source to the CLK input and the each output will
  * mirror that signal according to a decreasing deterministic probability set
  * by the seed value. RST input will reset the psudo random sequence. Use the
- * encoder to randomize the seed or adjust the pattern length.
+ * encoder to randomize the seed or adjust the pattern length. The user
+ * configurable parameters of seed and step length will be saved to EEPROM and
+ * will be recalled the next time you power on the module.
  */
 
 // Oled setting
@@ -62,7 +64,6 @@ FixedProbablisticOutput outputs[6];
 
 // Script config definitions
 const uint8_t OUTPUT_COUNT = 6;
-const uint8_t PARAM_COUNT = 3;   // [None, Seed, Length]
 const uint8_t MIN_LENGTH = 4;
 const uint8_t MAX_LENGTH = 32;
 
@@ -78,11 +79,19 @@ enum InputState {
 };
 InputState clk_state = STATE_UNCHANGED;
 
+// Enum constants for user editable parameters.
+enum Parameter {
+    PARAM_NONE,
+    PARAM_SEED,
+    PARAM_LENGTH,
+    PARAM_LAST,
+};
+Parameter selected_param = PARAM_NONE;
+
 // Script state variables.
 uint16_t seed;             // Store the current seed used for psudo random number generator
 uint8_t step_length = 16;  // Length of psudo random trigger sequence
 uint8_t step_count = 0;    // Count of trigger steps since reset
-uint8_t selected_param = 0;  // 0 = None, 1 = Seed, 2 = Length.
 
 int clk = 0;  // External CLK trigger input read value
 int old_clk = 0;
@@ -159,7 +168,7 @@ void loop() {
 
     // Read for a button press event.
     if (encoder.push()) {
-        selected_param = ++selected_param % PARAM_COUNT;
+        selected_param = static_cast<Parameter>((selected_param + 1) % PARAM_LAST);
         state_changed = true;
     }
 
@@ -219,19 +228,17 @@ void Reseed() {
 
 // Update the current selected parameter with the current movement of the encoder.
 void UpdateParameter(byte encoder_dir) {
-    if (selected_param == 1) UpdateSeed(encoder_dir);
-    if (selected_param == 2) UpdateLength(encoder_dir);
+    if (selected_param == PARAM_SEED) UpdateSeed(encoder_dir);
+    if (selected_param == PARAM_LENGTH) UpdateLength(encoder_dir);
 }
 
 // Right now just randomize up or down from current seed.
 void UpdateSeed(byte dir) {
-    if (dir == 0) return;
-    NewSeed();
+    if (dir != 0) NewSeed();
 }
 
 // Adjust the step length.
 void UpdateLength(byte dir) {
-    if (dir == 0) return;
     if (dir == 1 && step_length <= MAX_LENGTH) SetLength(++step_length);
     if (dir == 2 && step_length >= MIN_LENGTH) SetLength(--step_length);
 }
@@ -250,7 +257,7 @@ void UpdateDisplay() {
     display.println(String(seed, HEX));
 
     // Show edit icon for seed if it's selected.
-    if (selected_param == 1) {
+    if (selected_param == PARAM_SEED) {
         display.drawChar(28, 1, 0x10, 1, 0, 1);
     }
 
@@ -278,7 +285,7 @@ void UpdateDisplay() {
             left += boxSize + padding + 1;
 
             // Show edit icon for length if it's selected.
-            if (selected_param == 2 && i == step_length) {
+            if (selected_param == PARAM_LENGTH && i == step_length) {
                 display.drawChar(left, _top, 0x11, 1, 0, 1);
             }
 
