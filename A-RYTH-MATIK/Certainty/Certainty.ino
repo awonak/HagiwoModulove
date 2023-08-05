@@ -57,7 +57,7 @@
 
 // Flag for enabling debug print to serial monitoring output.
 // Note: this affects performance and locks LED 4 & 5 on HIGH.
-#define DEBUG
+// #define DEBUG
 
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 SimpleRotary encoder(ENCODER_PIN1, ENCODER_PIN2, ENCODER_SW_PIN);
@@ -112,7 +112,6 @@ void setup() {
 
     // Initial random seed and step length from EEPROM or default values.
     InitState();
-    packet.Debug();
 
     // Initialize each of the outputs with it's GPIO pins and probability.
     outputs[0].Init(OUT_CH1, LED_CH1, 0.96);
@@ -226,14 +225,8 @@ void UpdateParameter(byte encoder_dir) {
 // Randomize the current seed if the encoder has moved in either direction.
 void UpdateSeed(byte dir) {
     if (dir == 0) return;
-    if (dir == 1) {
-        packet.NextSeed();
-        packet.Debug();
-    }
-    if (dir == 2) {
-        packet.PrevSeed();
-        packet.Debug();
-    }
+    if (dir == 1) packet.NextSeed();
+    if (dir == 2) packet.PrevSeed();
     update_display = true;
     state_changed = true;
 }
