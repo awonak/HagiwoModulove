@@ -99,9 +99,9 @@ Parameter selected_param = PARAM_NONE;
 // Script state variables.
 uint8_t step_length = 16;  // Length of psudo random trigger sequence (default 16 steps)
 uint8_t step_count = 0;    // Count of trigger steps since reset
-SeedPacket packet;
-uint8_t seed_index;  // Indicated the seed digit to edit on Seed page.
-uint16_t temp_seed;  // Temporary seed for editing the current seed.
+SeedPacket packet;         // SeedPacket contains the buffer of previous seeds
+uint8_t seed_index;        // Indicated the seed digit to edit on Seed page.
+uint16_t temp_seed;        // Temporary seed for editing the current seed.
 
 int clk = 0;  // External CLK trigger input read value
 int old_clk = 0;
@@ -177,10 +177,10 @@ void loop() {
         outputs[i].Update(clk_state);
     }
 
-    // Check for long press to endable editing seed.
+    // Check for long press to endable editing seed. 1 for short press, 2 for long press.
     byte press = encoder.pushType(1000);
 
-    // Short button press.
+    // Short button press. Change editable parameter.
     if (press == 1) {
         // Next param on Main page.
         if (selected_page == PAGE_MAIN)
@@ -195,11 +195,11 @@ void loop() {
         update_display = true;
     }
 
-    // Long button press.
+    // Long button press. Change menu page.
     if (press == 2) {
         if (selected_page == PAGE_MAIN) {
-            temp_seed = packet.GetSeed();
             selected_param = PARAM_NONE;
+            temp_seed = packet.GetSeed();
             selected_page = PAGE_SEED;
         } else {
             seed_index = 0;
@@ -257,7 +257,7 @@ void UpdateParameter(byte encoder_dir) {
         if (selected_param == PARAM_LENGTH) UpdateLength(encoder_dir);
     }
     if (selected_page == PAGE_SEED) {
-        UpdateTempSeed(encoder_dir);
+        EditSeed(encoder_dir);
     }
 }
 
@@ -276,16 +276,19 @@ void UpdateLength(byte dir) {
     if (dir == 2 && step_length >= MIN_LENGTH) SetLength(--step_length);
 }
 
-// Edit the temp seed.
-void UpdateTempSeed(byte dir) {
+// Edit the current seed.
+void EditSeed(byte dir) {
     if (dir == 0) return;
 
     int change;
-
-    if (seed_index == 0) change = 0x1000;
-    else if (seed_index == 1) change = 0x0100;
-    else if (seed_index == 2) change = 0x0010;
-    else if (seed_index == 3) change = 0x0001;
+    if (seed_index == 0)
+        change = 0x1000;
+    else if (seed_index == 1)
+        change = 0x0100;
+    else if (seed_index == 2)
+        change = 0x0010;
+    else if (seed_index == 3)
+        change = 0x0001;
 
     if (dir == 1)
         temp_seed += change;
@@ -326,18 +329,6 @@ void UpdateDisplay() {
     }
 
     display.display();
-}
-
-void DisplaySeedPage() {
-    // Draw seed
-    display.setTextSize(2);
-    display.setCursor(42, 32);
-    display.println(String(temp_seed, HEX));
-
-    // Draw line under current editable digit.
-    int start = 42;
-    int top = 50;
-    display.drawFastHLine(start + (seed_index * 12), top, 10, WHITE);
 }
 
 void DisplayMainPage() {
@@ -395,4 +386,16 @@ void DisplayMainPage() {
     if (selected_param == PARAM_SEED) {
         display.drawChar(120, 56, 0x11, 1, 0, 1);
     }
+}
+
+void DisplaySeedPage() {
+    // Draw seed
+    display.setTextSize(2);
+    display.setCursor(42, 32);
+    display.println(String(temp_seed, HEX));
+
+    // Draw line under current editable digit.
+    int start = 42;
+    int top = 50;
+    display.drawFastHLine(start + (seed_index * 12), top, 10, WHITE);
 }
