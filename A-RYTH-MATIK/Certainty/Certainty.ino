@@ -139,9 +139,9 @@ void loop() {
     old_rst = rst;
     rst = digitalRead(RST_PIN);
 
-    // Determine current RST input state.
+    // When RST goes high, reseed and reset.
     if (old_rst == 0 && rst == 1) {
-        Reset();
+        NewSeed();
     }
 
     // Clock In LED indicator mirrors the clock input.
