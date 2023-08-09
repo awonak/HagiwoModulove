@@ -14,9 +14,7 @@ class SeedPacket {
     void SetSeed(uint16_t seed) {
         // If the buffer is full, shift elements
         if (buffer_length_ == SIZE_OF_BUFFER) {
-            for (int i = 0; i < SIZE_OF_BUFFER - 1; i++) {
-                memcpy(&packet_[i], &packet_[i + 1], sizeof(uint16_t));
-            }
+            memcpy(&packet_[0], &packet_[1], sizeof(uint16_t) * SIZE_OF_BUFFER);
         }
 
         // Write new seed to buffer.
