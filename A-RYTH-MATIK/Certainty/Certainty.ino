@@ -141,7 +141,7 @@ void loop() {
 
     // When RST goes high, reseed and reset.
     if (old_rst == 0 && rst == 1) {
-        NewSeed();
+        Reset();
     }
 
     // Clock In LED indicator mirrors the clock input.
@@ -200,9 +200,9 @@ void InitState() {
     }
 }
 
-// Reset the seed and pattern length to restart the psudo random deterministic pattern.
+// Reset the pattern sequence and reseed the psudo random deterministic pattern.
 void Reset() {
-    Reseed();
+    NewSeed();
     step_count = 0;
     update_display = true;
 }
