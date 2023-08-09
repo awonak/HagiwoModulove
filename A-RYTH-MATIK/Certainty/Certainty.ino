@@ -80,6 +80,13 @@ enum InputState {
 };
 InputState clk_state = STATE_UNCHANGED;
 
+// Enum constants for current display page.
+enum MenuPage {
+    PAGE_MAIN,
+    PAGE_SEED,
+};
+MenuPage selected_page = PAGE_MAIN;
+
 // Enum constants for user editable parameters.
 enum Parameter {
     PARAM_NONE,
@@ -92,7 +99,9 @@ Parameter selected_param = PARAM_NONE;
 // Script state variables.
 uint8_t step_length = 16;  // Length of psudo random trigger sequence (default 16 steps)
 uint8_t step_count = 0;    // Count of trigger steps since reset
-SeedPacket packet;
+SeedPacket packet;         // SeedPacket contains the buffer of previous seeds
+uint8_t seed_index;        // Indicated the seed digit to edit on Seed page.
+uint16_t temp_seed;        // Temporary seed for editing the current seed.
 
 int clk = 0;  // External CLK trigger input read value
 int old_clk = 0;
@@ -168,10 +177,35 @@ void loop() {
         outputs[i].Update(clk_state);
     }
 
-    // Read for a button press event.
-    if (encoder.push()) {
-        selected_param = static_cast<Parameter>((selected_param + 1) % PARAM_LAST);
-        SaveChanges();  // Save changes made from previous parameter edits.
+    // Check for long press to endable editing seed. 1 for short press, 2 for long press.
+    byte press = encoder.pushType(1000);
+
+    // Short button press. Change editable parameter.
+    if (press == 1) {
+        // Next param on Main page.
+        if (selected_page == PAGE_MAIN)
+            selected_param = static_cast<Parameter>((selected_param + 1) % PARAM_LAST);
+
+        // Next seed digit on Seed page.
+        if (selected_page == PAGE_SEED)
+            seed_index = ++seed_index % 4;
+
+        // Save changes made from previous parameter edits.
+        SaveChanges();
+        update_display = true;
+    }
+
+    // Long button press. Change menu page.
+    if (press == 2) {
+        if (selected_page == PAGE_MAIN) {
+            selected_param = PARAM_NONE;
+            temp_seed = packet.GetSeed();
+            selected_page = PAGE_SEED;
+        } else {
+            seed_index = 0;
+            packet.UpdateSeed(temp_seed);
+            selected_page = PAGE_MAIN;
+        }
         update_display = true;
     }
 
@@ -218,8 +252,13 @@ void Reset() {
 
 // Update the current selected parameter with the current movement of the encoder.
 void UpdateParameter(byte encoder_dir) {
-    if (selected_param == PARAM_SEED) UpdateSeed(encoder_dir);
-    if (selected_param == PARAM_LENGTH) UpdateLength(encoder_dir);
+    if (selected_page == PAGE_MAIN) {
+        if (selected_param == PARAM_SEED) UpdateSeed(encoder_dir);
+        if (selected_param == PARAM_LENGTH) UpdateLength(encoder_dir);
+    }
+    if (selected_page == PAGE_SEED) {
+        EditSeed(encoder_dir);
+    }
 }
 
 // Randomize the current seed if the encoder has moved in either direction.
@@ -237,6 +276,28 @@ void UpdateLength(byte dir) {
     if (dir == 2 && step_length >= MIN_LENGTH) SetLength(--step_length);
 }
 
+// Edit the current seed.
+void EditSeed(byte dir) {
+    if (dir == 0) return;
+
+    int change;
+    if (seed_index == 0)
+        change = 0x1000;
+    else if (seed_index == 1)
+        change = 0x0100;
+    else if (seed_index == 2)
+        change = 0x0010;
+    else if (seed_index == 3)
+        change = 0x0001;
+
+    if (dir == 1)
+        temp_seed += change;
+    else if (dir == 2)
+        temp_seed -= change;
+
+    update_display = true;
+}
+
 // Set the pattern length..
 void SetLength(uint8_t _step_length) {
     step_length = constrain(_step_length, MIN_LENGTH, MAX_LENGTH);
@@ -251,10 +312,26 @@ void UpdateDisplay() {
     display.clearDisplay();
 
     // Draw app title.
+    display.setTextSize(0);
     display.setCursor(40, 0);
     display.println("CERTAINTY");
     display.drawFastHLine(0, 10, SCREEN_WIDTH, WHITE);
 
+    switch (selected_page) {
+        case PAGE_MAIN:
+            DisplayMainPage();
+            break;
+        case PAGE_SEED:
+            DisplaySeedPage();
+            break;
+        default:
+            break;
+    }
+
+    display.display();
+}
+
+void DisplayMainPage() {
     // Draw boxes for pattern length.
     {
         int start = 26;
@@ -309,6 +386,16 @@ void UpdateDisplay() {
     if (selected_param == PARAM_SEED) {
         display.drawChar(120, 56, 0x11, 1, 0, 1);
     }
+}
 
-    display.display();
+void DisplaySeedPage() {
+    // Draw seed
+    display.setTextSize(2);
+    display.setCursor(42, 32);
+    display.println(String(temp_seed, HEX));
+
+    // Draw line under current editable digit.
+    int start = 42;
+    int top = 50;
+    display.drawFastHLine(start + (seed_index * 12), top, 10, WHITE);
 }
