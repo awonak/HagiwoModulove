@@ -26,6 +26,7 @@
 
 // Script specific output class.
 #include "output.h"
+#include "seed_packet.h"
 
 // OLED Display config
 #define OLED_ADDRESS 0x3C
@@ -89,9 +90,9 @@ enum Parameter {
 Parameter selected_param = PARAM_NONE;
 
 // Script state variables.
-uint16_t seed;             // Store the current seed used for psudo random number generator
 uint8_t step_length = 16;  // Length of psudo random trigger sequence (default 16 steps)
 uint8_t step_count = 0;    // Count of trigger steps since reset
+SeedPacket packet;
 
 int clk = 0;  // External CLK trigger input read value
 int old_clk = 0;
@@ -106,7 +107,7 @@ void setup() {
 // Only enable Serial monitoring if DEBUG is defined.
 // Note: this affects performance and locks LED 4 & 5 on HIGH.
 #ifdef DEBUG
-    Serial.begin(9600);
+    Serial.begin(115200);
 #endif
 
     // Initial random seed and step length from EEPROM or default values.
@@ -158,7 +159,7 @@ void loop() {
     // When step count wraps, reset step count and reseed.
     if (clk_state == STATE_RISING) {
         step_count = ++step_count % step_length;
-        if (step_count == 0) Reseed();
+        if (step_count == 0) packet.Reseed();
         update_display = true;
     }
 
@@ -187,40 +188,17 @@ void InitState() {
     // Read previously stored seed from EEPROM memory. If it is empty, generate a new random seed.
     uint16_t _seed;
     EEPROM.get(SEED_ADDR, _seed);
-    if (_seed != 0) {
-        seed = _seed;
+    if (_seed != 0xFFFF) {
+        packet.SetSeed(_seed);
     } else {
-        NewSeed();
+        packet.NewRandomSeed();
     }
     // Read previously stored step_length from EEPROM memory. Update step_length if the value is non-zero.
     uint8_t _step_length;
     EEPROM.get(LENGTH_ADDR, _step_length);
-    if (_step_length != 0) {
+    if (_step_length != 0 && _step_length != 0xFF) {
         SetLength(_step_length);
     }
-}
-
-// Reset the pattern sequence and reseed the psudo random deterministic pattern.
-void Reset() {
-    NewSeed();
-    step_count = 0;
-    update_display = true;
-}
-
-// Generate a new random seed.
-void NewSeed() {
-    randomSeed(micros());
-    seed = random(UINT16_MAX);
-    Reseed();
-    update_display = true;
-    state_changed = true;
-}
-
-// Set the pattern length..
-void SetLength(uint8_t _step_length) {
-    step_length = constrain(_step_length, MIN_LENGTH, MAX_LENGTH);
-    update_display = true;
-    state_changed = true;
 }
 
 // Save state to EEPROM if state has changed.
@@ -228,12 +206,14 @@ void SaveChanges() {
     if (!state_changed) return;
     state_changed = false;
     EEPROM.put(LENGTH_ADDR, step_length);
-    EEPROM.put(SEED_ADDR, seed);
+    EEPROM.put(SEED_ADDR, packet.GetSeed());
 }
 
-// Reseed the random number generator with the current seed.
-void Reseed() {
-    randomSeed(seed);
+// Reset the pattern sequence and reseed the psudo random deterministic pattern.
+void Reset() {
+    packet.NewRandomSeed();
+    step_count = 0;
+    update_display = true;
 }
 
 // Update the current selected parameter with the current movement of the encoder.
@@ -244,13 +224,24 @@ void UpdateParameter(byte encoder_dir) {
 
 // Randomize the current seed if the encoder has moved in either direction.
 void UpdateSeed(byte dir) {
-    if (dir != 0) NewSeed();
+    if (dir == 0) return;
+    if (dir == 1) packet.NextSeed();
+    if (dir == 2) packet.PrevSeed();
+    update_display = true;
+    state_changed = true;
 }
 
 // Adjust the step length for the given input direction (1=increment, 2=decrement).
 void UpdateLength(byte dir) {
     if (dir == 1 && step_length <= MAX_LENGTH) SetLength(++step_length);
     if (dir == 2 && step_length >= MIN_LENGTH) SetLength(--step_length);
+}
+
+// Set the pattern length..
+void SetLength(uint8_t _step_length) {
+    step_length = constrain(_step_length, MIN_LENGTH, MAX_LENGTH);
+    update_display = true;
+    state_changed = true;
 }
 
 // UI display of app state.
@@ -312,7 +303,7 @@ void UpdateDisplay() {
     display.drawPixel(85, 57, 1);
     display.drawPixel(87, 60, 1);
     display.setCursor(94, 56);
-    display.println(String(seed, HEX));
+    display.println(String(packet.GetSeed(), HEX));
 
     // Show edit icon for seed if it's selected.
     if (selected_param == PARAM_SEED) {
