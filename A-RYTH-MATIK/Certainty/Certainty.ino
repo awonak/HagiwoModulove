@@ -140,7 +140,7 @@ void loop() {
     old_rst = rst;
     rst = digitalRead(RST_PIN);
 
-    // Determine current RST input state.
+    // When RST goes high, reseed and reset.
     if (old_rst == 0 && rst == 1) {
         Reset();
     }
@@ -209,9 +209,9 @@ void SaveChanges() {
     EEPROM.put(SEED_ADDR, packet.GetSeed());
 }
 
-// Reset the seed and pattern length to restart the psudo random deterministic pattern.
+// Reset the pattern sequence and reseed the psudo random deterministic pattern.
 void Reset() {
-    packet.Reseed();
+    packet.NewRandomSeed();
     step_count = 0;
     update_display = true;
 }
