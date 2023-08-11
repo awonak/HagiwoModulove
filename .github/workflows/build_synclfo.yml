@@ -1,0 +1,27 @@
+name: SyncLFO Build
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        module: ["SyncLFO"]
+        firmware: ["ADSR", "Baby4", "GenerativeSequencer", "MultiModeEnv", "Polyrhythm"]
+
+    steps:
+      - name: Clone repo
+        uses: actions/checkout@master
+        
+      - name: Setup Arduino CLI
+        uses: arduino/setup-arduino-cli@v1.1.1
+        
+      - name: Compile Sketch
+        working-directory: ./${{ matrix.module}}
+        run: ARDUINO_DIRECTORIES_USER=$GITHUB_WORKSPACE/${{ matrix.module}} arduino-cli compile -b arduino:avr:nano -e --output-dir=./build
+        
+      - name: Upload bin
+        uses: actions/upload-artifact@v2
+        with:
+          name: ${{ matrix.module}}_${{ matrix.firmware }}.bin
+          path: ./${{ matrix.module}}/build/${{ matrix.firmware }}.ino.bin
