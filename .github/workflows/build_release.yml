@@ -72,9 +72,6 @@ jobs:
     needs: [build_arythmatik, build_synclfo]
 
     runs-on: ubuntu-latest
-    strategy:
-        matrix:
-          module: ["A-RYTH-MATIK", "SyncLFO"]
     steps:
       - uses: actions/download-artifact@master
         with:
