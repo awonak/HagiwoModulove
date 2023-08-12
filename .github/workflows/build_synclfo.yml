@@ -18,7 +18,7 @@ jobs:
         
       - name: Compile Sketch
         working-directory: ./${{ matrix.module}}
-        run: ARDUINO_DIRECTORIES_USER=$GITHUB_WORKSPACE/${{ matrix.module}} arduino-cli compile -b arduino:avr:nano -e --output-dir=./build
+        run: ARDUINO_DIRECTORIES_USER=$GITHUB_WORKSPACE/${{ matrix.firmware}} arduino-cli compile -b arduino:avr:nano -e --output-dir=./build
         
       - name: Upload bin
         uses: actions/upload-artifact@v2
