@@ -12,7 +12,7 @@ jobs:
     steps:
       - name: Clone repo
         uses: actions/checkout@master
-        
+
       - name: Setup Arduino CLI
         uses: arduino/setup-arduino-cli@v1.1.1
 
@@ -23,13 +23,18 @@ jobs:
           arduino-cli lib install "Adafruit GFX Library"
           arduino-cli lib install "Adafruit SSD1306"
           arduino-cli lib install SimpleRotary
-        
+
       - name: Compile Sketch
         working-directory: ./${{ matrix.module}}
         run: |
           arduino-cli compile -v -b arduino:avr:nano ${{ matrix.firmware}} -e --output-dir=./build
           mkdir -p ./release && cp ./build/${{ matrix.firmware }}.ino.hex ./release/${{ matrix.module}}_${{ matrix.firmware }}.hex
-          ls -lah ./build
+
+      - name: Upload bin
+        uses: actions/upload-artifact@v2
+        with:
+          name: release-artifacts
+          path: ./${{ matrix.module}}/release/${{ matrix.module}}_${{ matrix.firmware }}.hex
 
 
   build_synclfo:
@@ -42,7 +47,7 @@ jobs:
     steps:
         - name: Clone repo
           uses: actions/checkout@master
-        
+
         - name: Setup Arduino CLI
           uses: arduino/setup-arduino-cli@v1.1.1
 
@@ -50,12 +55,18 @@ jobs:
           run: |
             arduino-cli core update-index
             arduino-cli core install arduino:avr
-        
+
         - name: Compile Sketch
           working-directory: ./${{ matrix.module}}
           run: |
             ARDUINO_DIRECTORIES_USER=$GITHUB_WORKSPACE/${{ matrix.module}} arduino-cli compile -v -b arduino:avr:nano ${{ matrix.firmware}} -e --output-dir=./build
             mkdir -p ./release && cp ./build/${{ matrix.firmware }}.ino.hex ./release/${{ matrix.module}}_${{ matrix.firmware }}.hex
+
+        - name: Upload bin
+          uses: actions/upload-artifact@v2
+          with:
+            name: release-artifacts
+            path: ./${{ matrix.module}}/release/${{ matrix.module}}_${{ matrix.firmware }}.hex
 
   release:
     needs: [build_arythmatik, build_synclfo]
@@ -65,8 +76,13 @@ jobs:
         matrix:
           module: ["A-RYTH-MATIK", "SyncLFO"]
     steps:
-    - name: Create Release
-      uses: softprops/action-gh-release@v1
-      if: startsWith(github.ref, 'refs/tags/')
-      with:
-        files: ./${{ matrix.module}}/release/*.hex
+      - uses: actions/download-artifact@master
+        with:
+          name: release-artifacts
+          path: releases/
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: releases/*.hex
