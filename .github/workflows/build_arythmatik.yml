@@ -22,12 +22,12 @@ jobs:
           arduino-cli core install arduino:avr
           arduino-cli lib install "Adafruit GFX Library"
           arduino-cli lib install "Adafruit SSD1306"
-          arduino-cli lib install SimpleRotary
+          arduino-cli lib install SimpleRotary -v
         
       - name: Compile Sketch
         working-directory: ./${{ matrix.module}}
         run: |
-          ARDUINO_DIRECTORIES_USER=$GITHUB_WORKSPACE/${{ matrix.module}} arduino-cli compile -v -b arduino:avr:nano ${{ matrix.firmware}} -e --output-dir=./build
+          arduino-cli compile -v -b arduino:avr:nano ${{ matrix.firmware}} -e --output-dir=./build
           mkdir -p ./release && cp ./build/${{ matrix.firmware }}.ino.hex ./release/${{ matrix.module}}_${{ matrix.firmware }}.hex
 
       - name: Upload bin artifact
