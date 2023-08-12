@@ -19,7 +19,7 @@ jobs:
       - name: Install platform
         run: |
           arduino-cli core update-index
-          arduino-cli core install arduino:avr:nano
+          arduino-cli core install arduino:avr
         
       - name: Compile Sketch
         working-directory: ./${{ matrix.module}}
