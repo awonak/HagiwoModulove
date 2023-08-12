@@ -187,7 +187,9 @@ void loop() {
         outputs[i].Update(clk_state);
     }
 
-    // Check for long press to endable editing seed. 1 for short press, 2 for long press.
+    // Check for long press to endable editing seed.
+    // press and release for < 1 second to return 1 for short press
+    // press and release for > 1 second to return 2 for long press.
     byte press = encoder.pushType(1000);
 
     // Short button press. Change editable parameter.
