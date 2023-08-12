@@ -25,19 +25,18 @@ jobs:
         working-directory: ./${{ matrix.module}}
         run: ARDUINO_DIRECTORIES_USER=$GITHUB_WORKSPACE/${{ matrix.module}} arduino-cli compile -v -b arduino:avr:nano ${{ matrix.firmware}} -e --output-dir=./build
 
-      - name: Show output
-        working-directory: ./${{ matrix.module}}
-        run: ls -lah ./build
-
-      - name: Upload bin
+      - name: Upload bin artifact
         uses: actions/upload-artifact@v2
         with:
           name: ${{ matrix.module}}_${{ matrix.firmware }}.hex
           path: ./${{ matrix.module}}/build/${{ matrix.firmware }}.ino.hex
-
-      - name: Release
+    
+      - name: Create Release
         uses: softprops/action-gh-release@v1
-        # if: startsWith(github.ref, 'refs/tags/')
-        with:
-          draft: true
-          files: ${{ matrix.module}}_${{ matrix.firmware }}.hex
+
+      - name: Upload Artifact to release
+        uses: fnkr/github-action-ghr@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GHR_PATH: build/
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
