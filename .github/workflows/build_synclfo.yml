@@ -23,7 +23,7 @@ jobs:
         
       - name: Compile Sketch
         working-directory: ./${{ matrix.module}}
-        run: 
+        run: |
           ARDUINO_DIRECTORIES_USER=$GITHUB_WORKSPACE/${{ matrix.module}} arduino-cli compile -v -b arduino:avr:nano ${{ matrix.firmware}} -e --output-dir=./build
           mkdir -p ./release && cp ${{ matrix.firmware }}.ino.hex ./release/${{ matrix.module}}_${{ matrix.firmware }}.hex
 
