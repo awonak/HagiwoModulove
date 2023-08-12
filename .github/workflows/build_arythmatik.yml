@@ -29,6 +29,7 @@ jobs:
         run: |
           arduino-cli compile -v -b arduino:avr:nano ${{ matrix.firmware}} -e --output-dir=./build
           mkdir -p ./release && cp ./build/${{ matrix.firmware }}.ino.hex ./release/${{ matrix.module}}_${{ matrix.firmware }}.hex
+          ls -lah ./release
 
       - name: Upload bin artifact
         uses: actions/upload-artifact@v2
