@@ -27,12 +27,10 @@ jobs:
 
       - name: Show output
         working-directory: ./${{ matrix.module}}
-        run: |
-          ls -lah ./
-          ls -lah ./build
+        run: ls -lah ./build
 
       - name: Upload bin
         uses: actions/upload-artifact@v2
         with:
           name: ${{ matrix.module}}_${{ matrix.firmware }}.bin
-          path: ./${{ matrix.module}}/build/${{ matrix.firmware }}.ino.bin
+          path: ./${{ matrix.module}}/build/${{ matrix.firmware }}.ino.hex
