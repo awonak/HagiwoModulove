@@ -15,6 +15,11 @@ jobs:
         
       - name: Setup Arduino CLI
         uses: arduino/setup-arduino-cli@v1.1.1
+
+      - name: Install platform
+        run: |
+          arduino-cli core update-index
+          arduino-cli core install arduino:avr:nano
         
       - name: Compile Sketch
         working-directory: ./${{ matrix.module}}
