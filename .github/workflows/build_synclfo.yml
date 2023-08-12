@@ -25,7 +25,7 @@ jobs:
         working-directory: ./${{ matrix.module}}
         run: |
           ARDUINO_DIRECTORIES_USER=$GITHUB_WORKSPACE/${{ matrix.module}} arduino-cli compile -v -b arduino:avr:nano ${{ matrix.firmware}} -e --output-dir=./build
-          mkdir -p ./release && cp ${{ matrix.firmware }}.ino.hex ./release/${{ matrix.module}}_${{ matrix.firmware }}.hex
+          mkdir -p ./release && cp ./build/${{ matrix.firmware }}.ino.hex ./release/${{ matrix.module}}_${{ matrix.firmware }}.hex
 
       - name: Upload bin artifact
         uses: actions/upload-artifact@v2
