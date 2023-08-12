@@ -32,5 +32,5 @@ jobs:
       - name: Upload bin
         uses: actions/upload-artifact@v2
         with:
-          name: ${{ matrix.module}}_${{ matrix.firmware }}.bin
+          name: ${{ matrix.module}}_${{ matrix.firmware }}.hex
           path: ./${{ matrix.module}}/build/${{ matrix.firmware }}.ino.hex
