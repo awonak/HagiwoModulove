@@ -22,19 +22,20 @@ jobs:
           arduino-cli core install arduino:avr
           arduino-cli lib install "Adafruit GFX Library"
           arduino-cli lib install "Adafruit SSD1306"
-          arduino-cli lib install SimpleRotary -v
+          arduino-cli lib install SimpleRotary
         
       - name: Compile Sketch
         working-directory: ./${{ matrix.module}}
         run: |
           arduino-cli compile -v -b arduino:avr:nano ${{ matrix.firmware}} -e --output-dir=./build
           mkdir -p ./release && cp ./build/${{ matrix.firmware }}.ino.hex ./release/${{ matrix.module}}_${{ matrix.firmware }}.hex
-          ls -lah ./release
+          ls -lah ./build
 
       - name: Upload bin artifact
         uses: actions/upload-artifact@v2
         with:
-          path: /release/${{ matrix.module}}_${{ matrix.firmware }}.hex
+          name: ${{ matrix.module}}_${{ matrix.firmware }}.hex
+          path: /build/${{ matrix.firmware }}.ino.hex
     
       - name: Create Release
         uses: softprops/action-gh-release@v1
