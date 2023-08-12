@@ -34,3 +34,10 @@ jobs:
         with:
           name: ${{ matrix.module}}_${{ matrix.firmware }}.hex
           path: ./${{ matrix.module}}/build/${{ matrix.firmware }}.ino.hex
+
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        # if: startsWith(github.ref, 'refs/tags/')
+        with:
+          draft: true
+          files: ${{ matrix.module}}_${{ matrix.firmware }}.hex
