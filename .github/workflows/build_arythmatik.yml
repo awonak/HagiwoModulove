@@ -34,8 +34,7 @@ jobs:
       - name: Upload bin artifact
         uses: actions/upload-artifact@v2
         with:
-          name: ${{ matrix.module}}_${{ matrix.firmware }}.hex
-          path: ./${{ matrix.module}}/release/${{ matrix.firmware }}.ino.hex
+          path: /release/${{ matrix.module}}_${{ matrix.firmware }}.hex
     
       - name: Create Release
         uses: softprops/action-gh-release@v1
