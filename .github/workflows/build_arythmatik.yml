@@ -1,0 +1,40 @@
+name: SyncLFO Build
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        module: ["A-RYTH-MATIK"]
+        firmware: ["Certainty", "Uncertainty"]
+
+    steps:
+      - name: Clone repo
+        uses: actions/checkout@master
+        
+      - name: Setup Arduino CLI
+        uses: arduino/setup-arduino-cli@v1.1.1
+
+      - name: Install platform
+        run: |
+          arduino-cli core update-index
+          arduino-cli core install arduino:avr
+        
+      - name: Compile Sketch
+        working-directory: ./${{ matrix.module}}
+        run: |
+          ARDUINO_DIRECTORIES_USER=$GITHUB_WORKSPACE/${{ matrix.module}} arduino-cli compile -v -b arduino:avr:nano ${{ matrix.firmware}} -e --output-dir=./build
+          mkdir -p ./release && cp ./build/${{ matrix.firmware }}.ino.hex ./release/${{ matrix.module}}_${{ matrix.firmware }}.hex
+
+      - name: Upload bin artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: ${{ matrix.module}}_${{ matrix.firmware }}.hex
+          path: ./${{ matrix.module}}/release/${{ matrix.firmware }}.ino.hex
+    
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: ./${{ matrix.module}}/release/*.hex
