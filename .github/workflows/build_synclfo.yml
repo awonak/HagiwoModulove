@@ -36,7 +36,7 @@ jobs:
 
       - name: Upload Artifact to release
         uses: fnkr/github-action-ghr@v1
-        if: startsWith(github.ref, 'refs/tags/')
+        #if: startsWith(github.ref, 'refs/tags/')
         env:
           GHR_PATH: ./${{ matrix.module}}/build/
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
