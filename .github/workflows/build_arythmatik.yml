@@ -1,4 +1,4 @@
-name: SyncLFO Build
+name: A-RYTH-MATIK Build
 on: [push, pull_request]
 
 jobs:
