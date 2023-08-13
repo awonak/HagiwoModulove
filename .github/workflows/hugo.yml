@@ -58,6 +58,16 @@ jobs:
           hugo \
             --minify \
             --baseURL "${{ steps.pages.outputs.base_url }}/"
+      - name: Fetch release hex
+        working-directory: ./pages/static/releases
+        run: |
+          wget https://github.com/awonak/HagiwoModulove/releases/latest/download/A-RYTH-MATIK_Certainty.hex
+          wget https://github.com/awonak/HagiwoModulove/releases/latest/download/A-RYTH-MATIK_Uncertainty.hex
+          wget https://github.com/awonak/HagiwoModulove/releases/latest/download/SyncLFO_ADSR.hex
+          wget https://github.com/awonak/HagiwoModulove/releases/latest/download/SyncLFO_Baby4.hex
+          wget https://github.com/awonak/HagiwoModulove/releases/latest/download/SyncLFO_GenerativeSequencer.hex
+          wget https://github.com/awonak/HagiwoModulove/releases/latest/download/SyncLFO_MultiModeEnv.hex
+          wget https://github.com/awonak/HagiwoModulove/releases/latest/download/SyncLFO_Polyrhythm.hex
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v2
         with:

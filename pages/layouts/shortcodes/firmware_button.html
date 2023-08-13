@@ -1,12 +1,13 @@
 {{ if .Get "hex" }}
 <button
   arduino-uploader
-  hex-href="https://github.com/awonak/HagiwoModulove/releases/latest/download/{{ .Get "hex" | safeURL }}"
+  hex-href="/HagiwoModulove/releases/{{ .Get "hex" | safeURL }}"
   board="{{ with .Get "board"}}{{ . }}{{ else -}} nano {{- end }}" 
   [optional]verify
   [optional]port-filters='[{"usbProductId":46388,"usbVendorId":1241}]'
 >
     {{ with .Get "buttonText" }}{{ . | plainify }}{{ else -}} Upload Firmware {{ end }}
+    &nbsp;
     <span class="upload-progress"></span>
 </button>
 {{ end }}
