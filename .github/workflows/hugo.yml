@@ -59,7 +59,7 @@ jobs:
             --minify \
             --baseURL "${{ steps.pages.outputs.base_url }}/"
       - name: Fetch release hex
-        working-directory: ./pages/static/releases
+        working-directory: ./pages/public/releases
         run: |
           wget https://github.com/awonak/HagiwoModulove/releases/latest/download/A-RYTH-MATIK_Certainty.hex
           wget https://github.com/awonak/HagiwoModulove/releases/latest/download/A-RYTH-MATIK_Uncertainty.hex
