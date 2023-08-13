@@ -75,7 +75,7 @@ paginate = 5
 
     [languages.en.params.logo]
       logoText = "Hagiwo Modulove // Alt Firmware"
-      logoHomeLink = "/"
+      logoHomeLink = "/HagiwoModulove"
 
     [languages.en.menu]
       [[languages.en.menu.main]]
