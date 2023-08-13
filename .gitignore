@@ -1,1 +1,10 @@
 .vscode
+
+# Generated files by hugo
+/pages/public/
+/pages/resources/_gen/
+/pages/assets/jsconfig.json
+/pages/hugo_stats.json
+
+# Temporary lock file while building
+/pages/.hugo_build.lock
