@@ -121,6 +121,8 @@ int old_rst = 0;
 // State variables for tracking OLED and editable parameter changes.
 bool state_changed = true;
 bool update_display = true;
+const int refresh_ms = 100;  // minimum refresh rate in milliseconds
+long last_ui_update = 0;
 
 void setup() {
 // Only enable Serial monitoring if DEBUG is defined.
@@ -319,8 +321,14 @@ void SetLength(uint8_t _step_length) {
 
 // UI display of app state.
 void UpdateDisplay() {
+    // Only update when ui state changes.
     if (!update_display) return;
     update_display = false;
+
+    // Limit refresh rate.
+    if (millis() - last_ui_update < refresh_ms) return;
+    last_ui_update = millis();
+
     display.clearDisplay();
 
     // Draw app title.
