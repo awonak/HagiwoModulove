@@ -20,9 +20,7 @@ will be recalled the next time you power on the module.
 
 **RST**: Trigger this input to reseed the psudo random sequence.
 
-{{< firmware_button
-    hex="A-RYTH-MATIK_BitGarden.hex"
-    buttonText="Flash Firmware" >}}
+{{< firmware_button hex="A-RYTH-MATIK_BitGarden.hex" >}}
 
 ## Uncertainty
 
@@ -33,6 +31,4 @@ mirror that signal according to a decreasing probability.
 **CLK**: Provide a gate or trigger for each output to repeat with decreasing
      probability in each output.
 
-{{< firmware_button
-    hex="A-RYTH-MATIK_Uncertainty.hex"
-    buttonText="Flash Firmware" >}}
+{{< firmware_button hex="A-RYTH-MATIK_Uncertainty.hex" >}}
