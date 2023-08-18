@@ -1,5 +1,5 @@
 /**
- * @file Certainty.ino
+ * @file BitGarden.ino
  * @author Adam Wonak (https://github.com/awonak/)
  * @brief Deterministic psudo random gate processor. Somewhat an inversion of the Olivia Artz Modular's Uncertainty.
  * @version 0.1
@@ -333,8 +333,8 @@ void UpdateDisplay() {
 
     // Draw app title.
     display.setTextSize(0);
-    display.setCursor(40, 0);
-    display.println("CERTAINTY");
+    display.setCursor(36, 0);
+    display.println("BIT GARDEN");
     display.drawFastHLine(0, 10, SCREEN_WIDTH, WHITE);
 
     switch (selected_page) {
