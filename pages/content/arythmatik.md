@@ -3,7 +3,7 @@ title: "A-RYTH-MATIK"
 layout: "single"
 ---
 
-## Certainty
+## Bit Garden
 
 Each output will mirror CLK according to a decreasing deterministic probability
 set by the seed value. RST input will reset the psudo random sequence. Use the
@@ -21,7 +21,7 @@ will be recalled the next time you power on the module.
 **RST**: Trigger this input to reseed the psudo random sequence.
 
 {{< firmware_button
-    hex="A-RYTH-MATIK_Certainty.hex"
+    hex="A-RYTH-MATIK_BitGarden.hex"
     buttonText="Flash Firmware" >}}
 
 ## Uncertainty

@@ -7,7 +7,7 @@ jobs:
     strategy:
       matrix:
         module: ["A-RYTH-MATIK"]
-        firmware: ["Certainty", "Uncertainty"]
+        firmware: ["BitGarden", "Uncertainty"]
 
     steps:
       - name: Clone repo
