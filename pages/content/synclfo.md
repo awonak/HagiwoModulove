@@ -1,6 +1,5 @@
 ---
 title: "SyncLFO"
-layout: "single"
 ---
 
 ## ADSR
@@ -14,21 +13,17 @@ Knob 3: Sustain
 Knob 4: Release
 {{< /code >}}
 
-{{< firmware_button
-    hex="SyncLFO_ADSR.hex"
-    buttonText="Flash Firmware" >}}
+{{< firmware_button hex="SyncLFO_ADSR.hex" >}}
 
 ## Baby4
 
-4 step cv sequencer firmware for HAGIWO Sync Mod LFO
+4 step cv sequencer firmware for HAGIWO Sync Mod LFO.
 
-{{< firmware_button
-    hex="SyncLFO_Baby4.hex"
-    buttonText="Flash Firmware" >}}
+{{< firmware_button hex="SyncLFO_Baby4.hex" >}}
 
 ## GenerativeSequencer
 
-Generative Sequencer firmware for HAGIWO Sync Mod LFO
+Generative Sequencer firmware for HAGIWO Sync Mod LFO.
 
 demo video: [https://youtu.be/okj47TcXJXg](https://youtu.be/okj47TcXJXg)
 
@@ -39,9 +34,7 @@ Knob 3: Amplitiude
 Knob 4: Refrain count
 {{< /code >}}
 
-{{< firmware_button
-    hex="SyncLFO_GenerativeSequencer.hex"
-    buttonText="Flash Firmware" >}}
+{{< firmware_button hex="SyncLFO_GenerativeSequencer.hex" >}}
 
 ## MultiModeEnv
 
@@ -54,9 +47,7 @@ Knob 3: Mode (AR, ASR, SLOW AR (10x), LFO)
 Knob 4: Curve (LOG, LINEAR, EXP)
 {{< /code >}}
 
-{{< firmware_button
-    hex="SyncLFO_MultiModeEnv.hex"
-    buttonText="Flash Firmware" >}}
+{{< firmware_button hex="SyncLFO_MultiModeEnv.hex" >}}
 
 ## Polyrhythm
 
@@ -84,6 +75,4 @@ NOR - Only trigger when a polyphythm does not hit.
 AND - Only trigger if more than on rhythm hits on this beat.
 {{< /code >}}
 
-{{< firmware_button
-    hex="SyncLFO_MultiModeEnv.hex"
-    buttonText="Flash Firmware" >}}
+{{< firmware_button hex="SyncLFO_MultiModeEnv.hex" >}}
