@@ -5,62 +5,98 @@ layout: "single"
 
 ## ADSR
 
-Envelope Generator firmware for HAGIWO Sync Mod LFO.
+ADSR envelope generator firmware.
 
-{{< code language="docs" title="Knob mapping" id="1" expand="Show" collapse="Hide" isCollapsed="true" >}}
+Input a trigger
+to begin the rising attack phase. A gate input will hold the sustain value
+until the gate closes. When the trigger or gate ends, the release phase will
+begin. The Attack, Decay, and Release knob defines the amount of time each
+phase should take to complete, with a range of 0 to ~2.5 seconds.
+
+```yaml
 Knob 1: Attack
 Knob 2: Decay
 Knob 3: Sustain
 Knob 4: Release
-{{< /code >}}
 
-{{< firmware_button
-    hex="SyncLFO_ADSR.hex"
-    buttonText="Flash Firmware" >}}
+GATE_IN: Gate in / Re-trig
+CV_OUT: Envelope Output
+```
+
+{{< firmware_button hex="SyncLFO_ADSR.hex" >}}
 
 ## Baby4
 
-4 step cv sequencer firmware for HAGIWO Sync Mod LFO
+4 step cv sequencer firmware.
 
-{{< firmware_button
-    hex="SyncLFO_Baby4.hex"
-    buttonText="Flash Firmware" >}}
+Each knob can be set to
+a 0 to 10v value based on the knob position. Each trigger received by the
+clock input will advance the output voltage to the next knob value.
+
+```yaml
+Knob 1: Step 1 voltage
+Knob 2: Step 2 voltage
+Knob 3: Step 3 voltage
+Knob 4: Step 4 voltage
+
+TRIG_IN: Advance sequence step
+CV_OUT: Current step voltage
+```
+
+{{< firmware_button hex="SyncLFO_Baby4.hex" >}}
 
 ## GenerativeSequencer
 
-Generative Sequencer firmware for HAGIWO Sync Mod LFO
+Generative Sequencer firmware.
+
+This random voltage
+sequencer is inspired by the Deja Vu mode of the Mutable Instruments Marbles.
+The probability knob determines the chance for a new voltage to be set at the
+current sequence step. The sequence length knob sets the number of steps
+in the sequence, ranging from 1 to 16 steps. Refrain count determines the
+number of times the sequence must complete before a new voltage may be set.
 
 demo video: [https://youtu.be/okj47TcXJXg](https://youtu.be/okj47TcXJXg)
 
-{{< code language="docs" title="Knob mapping" id="2" expand="Show" collapse="Hide" isCollapsed="true" >}}
-Knob 1: Probability
+```yaml
+Knob 1: Probability for new random voltage
 Knob 2: Sequence step length
 Knob 3: Amplitiude
 Knob 4: Refrain count
-{{< /code >}}
 
-{{< firmware_button
-    hex="SyncLFO_GenerativeSequencer.hex"
-    buttonText="Flash Firmware" >}}
+TRIG_IN: Advance sequence step
+CV_OUT: Current step voltage
+```
+
+{{< firmware_button hex="SyncLFO_GenerativeSequencer.hex" >}}
 
 ## MultiModeEnv
 
-Multi-mode Envelope Generator firmware for HAGIWO Sync Mod LFO
+Multi-mode Envelope Generator firmware.
 
-{{< code language="docs" title="Knob mapping" id="3" expand="Show" collapse="Hide" isCollapsed="true" >}}
+This envelope generator has several modes and curve algorithms. AR mode will
+simply rise and fall based on the attack and release times set. ASR mode will
+hold high while the input gate is high. Slow AR will take 10x as long as the
+default AR with a max envelope time of about 20 seconds. Lastly, the LFO mode
+does not respond to the trigger input; instead it endlessly cycles between the
+attack and release phases. Curve options include logarithmic, linear and
+exponential.
+
+```yaml
 Knob 1: Attack
 Knob 2: Release
 Knob 3: Mode (AR, ASR, SLOW AR (10x), LFO)
 Knob 4: Curve (LOG, LINEAR, EXP)
-{{< /code >}}
 
-{{< firmware_button
-    hex="SyncLFO_MultiModeEnv.hex"
-    buttonText="Flash Firmware" >}}
+GATE_IN: Gate in / Re-trig
+CV_OUT: Envelope Output
+```
+
+{{< firmware_button hex="SyncLFO_MultiModeEnv.hex" >}}
 
 ## Polyrhythm
 
-Generate polyrhythms based on 16 step counter knobs for HAGIWO Sync Mod LFO
+Generate polyrhythms based on 16 step counter knobs.
 
 Each knob acts as a subdivision of the incoming clock. When a rhythm knob
 is fully CCW (0) no rhythm is set. Moving the rhythm knob CW, the first
@@ -70,20 +106,20 @@ subdivision of 1 and the polyrhythm will trigger every beat.
 When in OR mode, any beat that has more than one rhythm trigger will output
 an accented 5v, otherwise a single rhythm trigger will output 3v.
 
-{{< code language="docs" title="Knob mapping & logic modes" id="4" expand="Show" collapse="Hide" isCollapsed="true" >}}
+```yaml
 Knob 1: Polyrhythm count 1
 Knob 2: Polyrhythm count 2
 Knob 3: Polyrhythm count 3
 Knob 4: Logic mode selection (OR, XOR, NOR, AND)
 
 Logic Modes:
+    OR:  Trigger if any rhythm hits on the beat and will accent with more than one hit.
+    XOR: Only trigger if one and only one rhythm hits on this beat.
+    NOR: Only trigger when a polyphythm does not hit.
+    AND: Only trigger if more than on rhythm hits on this beat.
 
-OR -  Trigger if any rhythm hits on the beat and will accent with more than one hit.
-XOR - Only trigger if one and only one rhythm hits on this beat.
-NOR - Only trigger when a polyphythm does not hit.
-AND - Only trigger if more than on rhythm hits on this beat.
-{{< /code >}}
+TRIG_IN: Trigger Input to advance the rhythm counter
+CV_OUT: CV Output for polyrhythm triggers
+```
 
-{{< firmware_button
-    hex="SyncLFO_MultiModeEnv.hex"
-    buttonText="Flash Firmware" >}}
+{{< firmware_button hex="SyncLFO_MultiModeEnv.hex" >}}
