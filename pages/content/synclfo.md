@@ -1,6 +1,5 @@
 ---
 title: "SyncLFO"
-layout: "single"
 ---
 
 ## ADSR
@@ -18,10 +17,6 @@ Knob 1: Attack
 Knob 2: Decay
 Knob 3: Sustain
 Knob 4: Release
-
-GATE_IN: Gate in / Re-trig
-CV_OUT: Envelope Output
-```
 
 {{< firmware_button hex="SyncLFO_ADSR.hex" >}}
 
