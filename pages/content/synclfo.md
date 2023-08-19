@@ -17,6 +17,7 @@ Knob 1: Attack
 Knob 2: Decay
 Knob 3: Sustain
 Knob 4: Release
+```
 
 {{< firmware_button hex="SyncLFO_ADSR.hex" >}}
 
