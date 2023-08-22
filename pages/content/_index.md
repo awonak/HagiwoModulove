@@ -11,6 +11,8 @@ Please disconnect eurorack power before plugging the USB cable in!
 
 Simply click on the `Upload Firmware` button for the firmware you want, select your port and the firmware will be flashed on your device from your web browser! No need to compile or upload from the Arduino IDE!
 
+All of the source code along with instructions for setting up your development environment can be found on the GitHub repo at [https://github.com/awonak/HagiwoModulove/](https://github.com/awonak/HagiwoModulove/).
+
 [{{< image src="https://modulove.io/wp-content/uploads/2023/06/Modulove_A-RYTH-MATIK_Front_ON.webp" alt="A-RYTH-MATIK" style="float:right; padding-right: 28px;" height="300">}}](/HagiwoModulove/arythmatik)
 
 ### [A-RYTH-MATIK](/HagiwoModulove/arythmatik)

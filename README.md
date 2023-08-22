@@ -2,14 +2,14 @@
 
 This is a collection of open source hardware and software files related to Modulove hardware remixes of Hagiwo modules. This repository contains original alternative firmwares for Modulove's [Sync LFO](https://modulove.io/synclfo/) and [A-RYTH-MATIK](https://modulove.io/arythmatik/).
 
+Documentation for each alt firmware is available at [https://awonak.github.io/HagiwoModulove/](https://awonak.github.io/HagiwoModulove/). This site also provides the ability to flash the firmware to your module directly from your web browser! No need to compile or upload from the Arduino IDE!
+
 Original open source hardware/firmware and design can be found here:
 
 Hagiwo
 
-* [6 Ch Gate Seq](https://note.com/solder_state/n/n17c69afd484d)
 * [Euclidean Rhythms](https://note.com/solder_state/n/n433b32ea6dbc)
 * [Sync LFO](https://note.com/solder_state/n/n4c600f2431c3)
-* [Bezier Curve](https://note.com/solder_state/n/n39aacefd73a3)
 
 Modulove
 

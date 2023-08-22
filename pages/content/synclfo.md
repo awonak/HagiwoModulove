@@ -4,7 +4,7 @@ title: "SyncLFO"
 
 ## ADSR
 
-ADSR envelope generator firmware.
+ADSR envelope generator firmware. [[source](https://github.com/awonak/HagiwoModulove/blob/main/SyncLFO/ADSR/ADSR.ino)]
 
 Input a trigger
 to begin the rising attack phase. A gate input will hold the sustain value
@@ -26,7 +26,7 @@ CV_OUT: Envelope Output
 
 ## Baby4
 
-4 step cv sequencer firmware.
+4 step cv sequencer firmware. [[source](https://github.com/awonak/HagiwoModulove/blob/main/SyncLFO/Baby4/Baby4.ino)]
 
 Each knob can be set to
 a 0 to 10v value based on the knob position. Each trigger received by the
@@ -46,7 +46,7 @@ CV_OUT: Current step voltage
 
 ## GenerativeSequencer
 
-Generative Sequencer firmware.
+Generative Sequencer firmware. [[source](https://github.com/awonak/HagiwoModulove/blob/main/SyncLFO/GenerativeSequencer/GenerativeSequencer.ino)]
 
 This random voltage
 sequencer is inspired by the Deja Vu mode of the Mutable Instruments Marbles.
@@ -71,7 +71,7 @@ CV_OUT: Current step voltage
 
 ## MultiModeEnv
 
-Multi-mode Envelope Generator firmware.
+Multi-mode Envelope Generator firmware. [[source](https://github.com/awonak/HagiwoModulove/blob/main/SyncLFO/MultiModeEnv/MultiModeEnv.ino)]
 
 This envelope generator has several modes and curve algorithms. AR mode will
 simply rise and fall based on the attack and release times set. ASR mode will
@@ -95,7 +95,7 @@ CV_OUT: Envelope Output
 
 ## Polyrhythm
 
-Generate polyrhythms based on 16 step counter knobs.
+Generate polyrhythms based on 16 step counter knobs. [[source](https://github.com/awonak/HagiwoModulove/blob/main/SyncLFO/Polyrhythm/Polyrhythm.ino)]
 
 Each knob acts as a subdivision of the incoming clock. When a rhythm knob
 is fully CCW (0) no rhythm is set. Moving the rhythm knob CW, the first
@@ -121,4 +121,4 @@ TRIG_IN: Trigger Input to advance the rhythm counter
 CV_OUT: CV Output for polyrhythm triggers
 ```
 
-{{< firmware_button hex="SyncLFO_MultiModeEnv.hex" >}}
+{{< firmware_button hex="SyncLFO_Polyrhythm.hex" >}}
