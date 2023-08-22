@@ -2,7 +2,7 @@
  * @file Uncertainty.ino
  * @author Adam Wonak (https://github.com/awonak/)
  * @brief Stochastic gate processor based on the Olivia Artz Modular's Uncertainty.
- * @version 0.1
+ * @version 0.2
  * @date 2023-07-19
  *
  * @copyright Copyright (c) 2023
