@@ -14,8 +14,6 @@
 // Oled setting
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
-#include <Fonts/FreeMono18pt7b.h>
-#include <Fonts/FreeMono9pt7b.h>
 #include <Wire.h>
 
 // Encoder & button
@@ -59,9 +57,16 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 SimpleRotary encoder(ENCODER_PIN1, ENCODER_PIN2, ENCODER_SW_PIN);
 ProbablisticOutput outputs[6];
 
+// Enum constants for current display page.
+enum MenuPage {
+    PAGE_MAIN,
+    PAGE_MODE,
+};
+MenuPage selected_page = PAGE_MAIN;
+
 // Script config definitions
 const uint8_t OUTPUT_COUNT = 6;  // Count of outputs.
-const uint8_t PARAM_COUNT = 3;   // Count of editable parameters.
+const uint8_t PARAM_COUNT = 2;   // Count of editable parameters.
 
 // Script state variables.
 bool clk = 0;  // External trigger input detect
@@ -96,8 +101,6 @@ void setup() {
     // OLED Display configuration.
     delay(1000);
     display.begin(SSD1306_SWITCHCAPVCC, OLED_ADDRESS);
-    display.setTextSize(1);
-    display.setFont(&FreeMono9pt7b);
     display.setTextColor(WHITE);
     display.clearDisplay();
     display.display();
@@ -125,9 +128,31 @@ void loop() {
         }
     }
 
-    // Read for a button press event.
-    if (encoder.push()) {
-        selected_param = ++selected_param % PARAM_COUNT;
+    // Check for long press to endable editing seed.
+    // press and release for < 1 second to return 1 for short press
+    // press and release for > 1 second to return 2 for long press.
+    byte press = encoder.pushType(1000);
+
+    // Short button press. Change editable parameter.
+    if (press == 1) {
+        // Next param on Main page.
+        if (selected_page == PAGE_MAIN)
+            selected_param = ++selected_param % PARAM_COUNT;
+
+        // Save changes made from previous parameter edits.
+        // SaveChanges();
+        update_display = true;
+    }
+
+    // Long button press. Change menu page.
+    if (press == 2) {
+        if (selected_page == PAGE_MAIN) {
+            selected_page = PAGE_MODE;
+            selected_param = 2;
+        } else {
+            selected_page = PAGE_MAIN;
+            selected_param = 0;
+        }
         update_display = true;
     }
 
@@ -140,27 +165,30 @@ void loop() {
 }
 
 void UpdateParameter(byte encoder_dir) {
+    if (encoder_dir == 0) return;
     if (selected_param == 0) UpdateOutput(encoder_dir);
-    if (selected_param == 1) UpdateMode(encoder_dir);
-    if (selected_param == 2) UpdateProb(encoder_dir);
+    if (selected_param == 1) UpdateProb(encoder_dir);
+    if (selected_param == 2) UpdateMode(encoder_dir);
 }
 
 void UpdateOutput(byte encoder_dir) {
-    if (encoder_dir == 0) return;
     if (encoder_dir == 1 && selected_out < OUTPUT_COUNT - 1) selected_out++;
     if (encoder_dir == 2 && selected_out > 0) selected_out--;
     update_display = true;
 }
 
 void UpdateMode(byte encoder_dir) {
-    if (encoder_dir == 0) return;
-    if (encoder_dir == 1) outputs[selected_out].SetMode(Mode::FLIP);
-    if (encoder_dir == 2) outputs[selected_out].SetMode(Mode::TRIGGER);
+    Mode newMode;
+    if (encoder_dir == 1) newMode = Mode::FLIP;
+    if (encoder_dir == 2) newMode = Mode::TRIGGER;
+    // Update the mode for all outputs.
+    for (int i = 0; i < OUTPUT_COUNT; i++) {
+        outputs[i].SetMode(newMode);
+    }
     update_display = true;
 }
 
 void UpdateProb(byte encoder_dir) {
-    if (encoder_dir == 0) return;
     if (encoder_dir == 1) outputs[selected_out].IncProb();
     if (encoder_dir == 2) outputs[selected_out].DecProb();
     update_display = true;
@@ -171,34 +199,55 @@ void UpdateDisplay() {
     update_display = false;
     display.clearDisplay();
 
-    // Indicator for which config parameter is selected.
-    int x1 = 22, y1 = 13;  // Set default indicator point origin.
-    if (selected_param == 0) y1 = 13;
-    if (selected_param == 1) y1 = 31;
-    if (selected_param == 2) y1 = 49;
-    display.fillTriangle(x1, y1, x1 - 3, y1 - 3, x1 - 3, y1 + 3, WHITE);
+    // Draw app title.
+    display.setTextSize(0);
+    display.setCursor(36, 0);
+    display.println("UNCERTAINTY");
+    display.drawFastHLine(0, 10, SCREEN_WIDTH, WHITE);
 
-    // Display the 6 output channel boxes.
-    int boxSize = 8;
-    for (int i = 1; i < OUTPUT_COUNT + 1; i++) {
-        display.drawRect(boxSize, i * boxSize, boxSize - 1, boxSize - 1, WHITE);
+    switch (selected_page) {
+        case PAGE_MAIN:
+            DisplayMainPage();
+            break;
+        case PAGE_MODE:
+            DisplayModePage();
+            break;
     }
-    display.fillRect(boxSize, (selected_out * boxSize) + boxSize, boxSize - 1, boxSize - 1, WHITE);
-
-    // Display config param label and value.
-    display.setCursor(25, 18);
-    display.println("Output " + String(selected_out + 1));
-    display.setCursor(80, 18);
-
-    display.setCursor(25, 36);
-    display.println("Mode:");
-    display.setCursor(80, 36);
-    display.println(outputs[selected_out].DisplayMode());
-
-    display.setCursor(25, 54);
-    display.println("Prob:");
-    display.setCursor(80, 54);
-    display.println(outputs[selected_out].GetProb(), 2);
 
     display.display();
+}
+
+void DisplayMainPage() {
+    // Draw boxes for pattern length.
+    int top = 16;
+    int left = 16;
+    int barWidth = 10;
+    int barHeight = 42;
+    int padding = 8;
+
+    for (int i = 0; i < OUTPUT_COUNT; i++) {
+        // Draw output probability bar.
+        display.drawRect(left, top, barWidth, barHeight, 1);
+
+        // Fill current bar probability.
+        byte probFill = (float(barHeight) * outputs[i].GetProb());
+        byte probTop = top + barHeight - probFill;
+        display.fillRect(left, probTop, barWidth, probFill, 1);
+
+        // Show selected output.
+        if (i == selected_out) {
+            (selected_param == 0)
+                ? display.drawChar(left + 2, SCREEN_HEIGHT - 6, 0x18, 1, 0, 1)
+                : display.drawChar(left + 2, SCREEN_HEIGHT - 6, 0x25, 1, 0, 1);
+        }
+
+        left += barWidth + padding;
+    }
+}
+
+void DisplayModePage() {
+    // Show mode edit page.
+    display.setTextSize(2);
+    display.setCursor(12, 32);
+    display.println("Mode:" + outputs[0].DisplayMode());
 }
