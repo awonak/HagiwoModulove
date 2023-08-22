@@ -1,6 +1,6 @@
 # Hagiwo/Modulove
 
-This is a collection of open source hardware and software files related to Modulove hardware remixes of Hagiwo modules. This repository contains original alternative firmwares for Modulove's [Sync LFO](https://modulove.io/synclfo/) and [A-RYTH-MATIK](https://modulove.io/arythmatik/).
+This is a collection of open source alternative firmwares for Modulove's [Sync LFO](https://modulove.io/synclfo/) and [A-RYTH-MATIK](https://modulove.io/arythmatik/).
 
 Documentation for each alt firmware is available at [https://awonak.github.io/HagiwoModulove/](https://awonak.github.io/HagiwoModulove/). This site also provides the ability to flash the firmware to your module directly from your web browser! No need to compile or upload from the Arduino IDE!
 
