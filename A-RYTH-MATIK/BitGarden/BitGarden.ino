@@ -121,8 +121,6 @@ int old_rst = 0;
 // State variables for tracking OLED and editable parameter changes.
 bool state_changed = true;
 bool update_display = true;
-const int refresh_ms = 100;  // minimum refresh rate in milliseconds
-long last_ui_update = 0;
 
 void setup() {
 // Only enable Serial monitoring if DEBUG is defined.
@@ -325,10 +323,6 @@ void UpdateDisplay() {
     if (!update_display) return;
     update_display = false;
 
-    // Limit refresh rate.
-    if (millis() - last_ui_update < refresh_ms) return;
-    last_ui_update = millis();
-
     display.clearDisplay();
 
     // Draw app title.
@@ -353,38 +347,36 @@ void UpdateDisplay() {
 
 void DisplayMainPage() {
     // Draw boxes for pattern length.
-    {
-        int start = 26;
-        int top = 16;
-        int left = start;
-        int boxSize = 7;
-        int padding = 2;
-        int wrap = 8;
+    int start = 26;
+    int top = 16;
+    int left = start;
+    int boxSize = 7;
+    int padding = 2;
+    int wrap = 8;
 
-        for (int i = 1; i <= step_length; i++) {
-            // Determine how much top padding to use.
-            int _top = top;
-            if (step_length <= 8) _top += 8;
-            if (step_length <= 16) _top += 6;
-            if (step_length <= 24) _top += 4;
-            // Draw box, fill current step.
-            (i == step_count + 1)
-                ? display.fillRect(left, _top, boxSize, boxSize, 1)
-                : display.drawRect(left, _top, boxSize, boxSize, 1);
+    for (int i = 1; i <= step_length; i++) {
+        // Determine how much top padding to use.
+        int _top = top;
+        if (step_length <= 8) _top += 8;
+        if (step_length <= 16) _top += 6;
+        if (step_length <= 24) _top += 4;
+        // Draw box, fill current step.
+        (i == step_count + 1)
+            ? display.fillRect(left, _top, boxSize, boxSize, 1)
+            : display.drawRect(left, _top, boxSize, boxSize, 1);
 
-            // Advance the draw cursors.
-            left += boxSize + padding + 1;
+        // Advance the draw cursors.
+        left += boxSize + padding + 1;
 
-            // Show edit icon for length if it's selected.
-            if (selected_param == PARAM_LENGTH && i == step_length) {
-                display.drawChar(left, _top, 0x11, 1, 0, 1);
-            }
+        // Show edit icon for length if it's selected.
+        if (selected_param == PARAM_LENGTH && i == step_length) {
+            display.drawChar(left, _top, 0x11, 1, 0, 1);
+        }
 
-            // Wrap the box draw cursor if we hit wrap count.
-            if (i % wrap == 0) {
-                top += boxSize + padding;
-                left = start;
-            }
+        // Wrap the box draw cursor if we hit wrap count.
+        if (i % wrap == 0) {
+            top += boxSize + padding;
+            left = start;
         }
     }
 

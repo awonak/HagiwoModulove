@@ -75,9 +75,6 @@ bool old_clk = 0;
 byte selected_out = 0;
 byte selected_param = 0;
 
-// State variables for tracking OLED refresh rate.
-const int refresh_ms = 100;
-uint32_t last_ui_update = 0;
 bool update_display = true;
 
 void setup() {
@@ -139,8 +136,6 @@ void loop() {
         if (selected_page == PAGE_MAIN)
             selected_param = ++selected_param % PARAM_COUNT;
 
-        // Save changes made from previous parameter edits.
-        // SaveChanges();
         update_display = true;
     }
 
