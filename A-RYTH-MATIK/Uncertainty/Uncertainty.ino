@@ -243,6 +243,6 @@ void DisplayMainPage() {
 void DisplayModePage() {
     // Show mode edit page.
     display.setTextSize(2);
-    display.setCursor(12, 32);
-    display.println("Mode:" + outputs[0].DisplayMode());
+    display.setCursor(6, 32);
+    display.println("MODE: " + outputs[0].DisplayMode());
 }

@@ -71,7 +71,7 @@ class ProbablisticOutput {
     inline bool State() { return state_; }
     inline bool GetMode() { return mode_; }
     inline void SetMode(Mode mode) { mode_ = mode; }
-    inline String DisplayMode() { return (mode_ == 0) ? "Trig" : "Flip"; }
+    inline String DisplayMode() { return (mode_ == 0) ? "TRIG" : "FLIP"; }
     inline float GetProb() { return float(prob_) / float(MaxRandRange); }
     inline void IncProb() { prob_ = constrain(++prob_, 0, MaxRandRange); }
     inline void DecProb() { prob_ = constrain(--prob_, 0, MaxRandRange); }
