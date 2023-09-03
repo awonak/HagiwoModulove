@@ -1,5 +1,7 @@
 #pragma once
 
+using namespace modulove;
+
 const int MaxRandRange = 100;
 
 /**
@@ -13,27 +15,23 @@ class FixedProbablisticOutput {
     /**
     Initializes the probablistic cv output object with a given digital cv and
     led pin pair.
-      \param cv_pin gpio pin for the cv output.
-      \param led_pin gpio pin for the LED.
+      \param output Instance of the cv output.
       \param probability percentage chance to trigger as a float from 0 to 1.
     */
-    void Init(uint8_t cv_pin, uint8_t led_pin, float probability) {
-        pinMode(cv_pin, OUTPUT);   // Gate/Trigger Output
-        pinMode(led_pin, OUTPUT);  // LED
-        cv_pin_ = cv_pin;
-        led_pin_ = led_pin;
+    void Init(DigitalOutput output, float probability) {
+        output_ = output;
         setProb(probability);
     }
 
-    // Turn the CV and LED High according to the probability value.
-    inline void Update(uint8_t input_state) {
-        if (input_state == 0) return;  // Unchanged
-        if (input_state == 1) high();  // Rising
-        if (input_state == 2) low();   // Falling
+    // Update CV and LED state according to the input state and configured probability value.
+    inline void Update(DigitalInput::InputState input_state) {
+        if (input_state == DigitalInput::STATE_UNCHANGED) return;
+        if (input_state == DigitalInput::STATE_RISING) high();
+        if (input_state == DigitalInput::STATE_FALLING) low();
     }
 
     // Return the bool representing the on/off state of the output.
-    inline bool State() { return state_; }
+    inline bool State() { return output_.On(); }
 
     // Return the float trigger probability of the output.
     inline float GetProb() {
@@ -41,9 +39,7 @@ class FixedProbablisticOutput {
     }
 
    private:
-    uint8_t cv_pin_;
-    uint8_t led_pin_;
-    bool state_;
+    DigitalOutput output_;
     int prob_;
 
     inline void setProb(float probability) {
@@ -52,15 +48,9 @@ class FixedProbablisticOutput {
 
     inline void high() {
         if (random(0, MaxRandRange) < prob_) {
-            update(HIGH);
+            output_.High();
         }
     }
 
-    inline void low() { update(LOW); }
-
-    void update(uint8_t state) {
-        digitalWrite(cv_pin_, state);
-        digitalWrite(led_pin_, state);
-        state_ = state;
-    }
+    inline void low() { output_.Low(); }
 };
