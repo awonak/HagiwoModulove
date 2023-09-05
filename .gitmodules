@@ -4,3 +4,6 @@
 [submodule "A-RYTH-MATIK/BitGarden/libmodulove"]
 	path = A-RYTH-MATIK/BitGarden/libmodulove
 	url = ../libmodulove
+[submodule "A-RYTH-MATIK/Uncertainty/libmodulove"]
+	path = A-RYTH-MATIK/Uncertainty/libmodulove
+	url = ../libmodulove
