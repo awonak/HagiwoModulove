@@ -30,7 +30,8 @@
 // #define DEBUG
 
 // Script specific output class.
-#include "modulove_arythmatik.h"
+#include "libmodulove/arythmatik.h"
+// #include "modulove_arythmatik.h"
 #include "output.h"
 #include "seed_packet.h"
 
