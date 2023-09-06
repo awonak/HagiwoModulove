@@ -29,14 +29,18 @@
 // Note: this affects performance and locks LED 4 & 5 on HIGH.
 // #define DEBUG
 
+// Include the Modulove hardware library.
+#include "src/libmodulove/arythmatik.h"
+
 // Script specific output class.
-#include "libmodulove/arythmatik.h"
-// #include "modulove_arythmatik.h"
 #include "output.h"
 #include "seed_packet.h"
 
 using namespace modulove;
 using namespace arythmatik;
+
+// Declare A-RYTH-MATIK hardware variable.
+Arythmatik hw;
 
 FixedProbablisticOutput outputs[OUTPUT_COUNT];
 
@@ -63,9 +67,6 @@ enum Parameter {
     PARAM_LAST,
 };
 Parameter selected_param = PARAM_NONE;
-
-// Declare A-RYTH-MATIK hardware variable.
-Arythmatik hw;
 
 // Script state variables.
 uint8_t step_length = 16;  // Length of psudo random trigger sequence (default 16 steps)

@@ -1,3 +1,6 @@
 [submodule "pages/themes/terminal"]
 	path = pages/themes/terminal
 	url = https://github.com/panr/hugo-theme-terminal.git
+[submodule "A-RYTH-MATIK/BitGarden/src/libmodulove"]
+	path = A-RYTH-MATIK/BitGarden/src/libmodulove
+	url = https://github.com/awonak/libmodulove.git
