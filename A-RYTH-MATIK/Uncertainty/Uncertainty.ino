@@ -11,51 +11,23 @@
  * mirror that signal according to a decreasing probability.
  */
 
-// Oled setting
-#include <Adafruit_GFX.h>
-#include <Adafruit_SSD1306.h>
-#include <Wire.h>
-
-// Encoder & button
-#include <SimpleRotary.h>
+// Include the Modulove library.
+#include "src/libmodulove/arythmatik.h"
 
 // Script specific output class.
 #include "output.h"
-
-// OLED Display config
-#define OLED_ADDRESS 0x3C
-#define SCREEN_WIDTH 128
-#define SCREEN_HEIGHT 64
-
-// Peripheral input pins
-#define ENCODER_PIN1 2
-#define ENCODER_PIN2 3
-#define ENCODER_SW_PIN 12
-#define CLK_PIN 13
-#define RST_PIN 11
-
-// Output Pins
-#define CLOCK_LED 4
-#define OUT_CH1 5
-#define OUT_CH2 6
-#define OUT_CH3 7
-#define OUT_CH4 8
-#define OUT_CH5 9
-#define OUT_CH6 10
-#define LED_CH1 14
-#define LED_CH2 15
-#define LED_CH3 16
-#define LED_CH4 0
-#define LED_CH5 1
-#define LED_CH6 17
 
 // Flag for enabling debug print to serial monitoring output.
 // Note: this affects performance and locks LED 4 & 5 on HIGH.
 // #define DEBUG
 
-Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
-SimpleRotary encoder(ENCODER_PIN1, ENCODER_PIN2, ENCODER_SW_PIN);
-ProbablisticOutput outputs[6];
+using namespace modulove;
+using namespace arythmatik;
+
+// Declare A-RYTH-MATIK hardware variable.
+Arythmatik hw;
+
+ProbablisticOutput outputs[OUTPUT_COUNT];
 
 // Enum constants for current display page.
 enum MenuPage {
@@ -65,13 +37,9 @@ enum MenuPage {
 MenuPage selected_page = PAGE_MAIN;
 
 // Script config definitions
-const uint8_t OUTPUT_COUNT = 6;  // Count of outputs.
 const uint8_t PARAM_COUNT = 2;   // Count of editable parameters.
 
 // Script state variables.
-bool clk = 0;  // External trigger input detect
-bool old_clk = 0;
-
 byte selected_out = 0;
 byte selected_param = 0;
 
@@ -84,42 +52,42 @@ void setup() {
     Serial.begin(9600);
 #endif
 
+    // Initialize the A-RYTH-MATIK peripherials.
+    hw.Init();
+
     // Initialize each of the outputs with it's GPIO pins and probability.
-    outputs[0].Init(OUT_CH1, LED_CH1, 0.96);
-    outputs[1].Init(OUT_CH2, LED_CH2, 0.82);
-    outputs[2].Init(OUT_CH3, LED_CH3, 0.64);
-    outputs[3].Init(OUT_CH4, LED_CH4, 0.48);
-    outputs[4].Init(OUT_CH5, LED_CH5, 0.32);
-    outputs[5].Init(OUT_CH6, LED_CH6, 0.18);
+    outputs[0].Init(hw.outputs[0], 0.96);
+    outputs[1].Init(hw.outputs[1], 0.82);
+    outputs[2].Init(hw.outputs[2], 0.64);
+    outputs[3].Init(hw.outputs[3], 0.48);
+    outputs[4].Init(hw.outputs[4], 0.32);
+    outputs[5].Init(hw.outputs[5], 0.18);
 
     // CLOCK LED (DIGITAL)
     pinMode(CLOCK_LED, OUTPUT);
 
     // OLED Display configuration.
     delay(1000);
-    display.begin(SSD1306_SWITCHCAPVCC, OLED_ADDRESS);
-    display.setTextColor(WHITE);
-    display.clearDisplay();
-    display.display();
+    hw.display.begin(SSD1306_SWITCHCAPVCC, OLED_ADDRESS);
+    hw.display.setTextColor(WHITE);
+    hw.display.clearDisplay();
+    hw.display.display();
 }
 
 void loop() {
-    old_clk = clk;
-    clk = digitalRead(CLK_PIN);
-
-    // Clock In LED indicator mirrors the clock input.
-    digitalWrite(CLOCK_LED, clk);
+    // Read inputs to determine state.
+    hw.ProcessInputs();
 
     // Input clock has gone high, call each output's On() for a chance to
     // trigger that output.
-    if (old_clk == 0 && clk == 1) {
+    if (hw.Clk.State() == DigitalInput::STATE_RISING) {
         for (int i = 0; i < OUTPUT_COUNT; i++) {
             outputs[i].On();
         }
     }
 
     // Input clock has gone low, turn off Outputs.
-    if (old_clk == 1 && clk == 0) {
+    if (hw.Clk.State() == DigitalInput::STATE_FALLING) {
         for (int i = 0; i < OUTPUT_COUNT; i++) {
             outputs[i].Off();
         }
@@ -128,7 +96,7 @@ void loop() {
     // Check for long press to endable editing seed.
     // press and release for < 1 second to return 1 for short press
     // press and release for > 1 second to return 2 for long press.
-    byte press = encoder.pushType(1000);
+    byte press = hw.encoder.pushType(1000);
 
     // Short button press. Change editable parameter.
     if (press == 1) {
@@ -153,7 +121,7 @@ void loop() {
 
     // Read encoder for a change in direction and update the selected parameter.
     // rotate() returns 0 for unchanged, 1 for increment, 2 for decrement.
-    UpdateParameter(encoder.rotate());
+    UpdateParameter(hw.encoder.rotate());
 
     // Render any new UI changes to the OLED display.
     UpdateDisplay();
@@ -192,13 +160,13 @@ void UpdateProb(byte encoder_dir) {
 void UpdateDisplay() {
     if (!update_display) return;
     update_display = false;
-    display.clearDisplay();
+    hw.display.clearDisplay();
 
     // Draw app title.
-    display.setTextSize(0);
-    display.setCursor(36, 0);
-    display.println("UNCERTAINTY");
-    display.drawFastHLine(0, 10, SCREEN_WIDTH, WHITE);
+    hw.display.setTextSize(0);
+    hw.display.setCursor(36, 0);
+    hw.display.println("UNCERTAINTY");
+    hw.display.drawFastHLine(0, 10, SCREEN_WIDTH, WHITE);
 
     switch (selected_page) {
         case PAGE_MAIN:
@@ -209,7 +177,7 @@ void UpdateDisplay() {
             break;
     }
 
-    display.display();
+    hw.display.display();
 }
 
 void DisplayMainPage() {
@@ -222,18 +190,18 @@ void DisplayMainPage() {
 
     for (int i = 0; i < OUTPUT_COUNT; i++) {
         // Draw output probability bar.
-        display.drawRect(left, top, barWidth, barHeight, 1);
+        hw.display.drawRect(left, top, barWidth, barHeight, 1);
 
         // Fill current bar probability.
         byte probFill = (float(barHeight) * outputs[i].GetProb());
         byte probTop = top + barHeight - probFill;
-        display.fillRect(left, probTop, barWidth, probFill, 1);
+        hw.display.fillRect(left, probTop, barWidth, probFill, 1);
 
         // Show selected output.
         if (i == selected_out) {
             (selected_param == 0)
-                ? display.drawChar(left + 2, SCREEN_HEIGHT - 6, 0x18, 1, 0, 1)
-                : display.drawChar(left + 2, SCREEN_HEIGHT - 6, 0x25, 1, 0, 1);
+                ? hw.display.drawChar(left + 2, SCREEN_HEIGHT - 6, 0x18, 1, 0, 1)
+                : hw.display.drawChar(left + 2, SCREEN_HEIGHT - 6, 0x25, 1, 0, 1);
         }
 
         left += barWidth + padding;
@@ -242,7 +210,7 @@ void DisplayMainPage() {
 
 void DisplayModePage() {
     // Show mode edit page.
-    display.setTextSize(2);
-    display.setCursor(6, 32);
-    display.println("MODE: " + outputs[0].DisplayMode());
+    hw.display.setTextSize(2);
+    hw.display.setCursor(6, 32);
+    hw.display.println("MODE: " + outputs[0].DisplayMode());
 }

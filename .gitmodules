@@ -4,3 +4,6 @@
 [submodule "A-RYTH-MATIK/BitGarden/src/libmodulove"]
 	path = A-RYTH-MATIK/BitGarden/src/libmodulove
 	url = https://github.com/awonak/libmodulove.git
+[submodule "A-RYTH-MATIK/Uncertainty/src/libmodulove"]
+	path = A-RYTH-MATIK/Uncertainty/src/libmodulove
+	url = https://github.com/awonak/libmodulove.git

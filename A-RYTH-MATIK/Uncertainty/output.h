@@ -1,5 +1,7 @@
 #pragma once
 
+using namespace modulove;
+
 enum Mode {
     // Follow the state of the input clock.
     TRIGGER,
@@ -24,8 +26,8 @@ class ProbablisticOutput {
       \param led_pin gpio pin for the LED.
       \param probability percentage chance to trigger as a float from 0 to 1.
     */
-    void Init(uint8_t cv_pin, uint8_t led_pin, float probability) {
-        Init(cv_pin, led_pin, probability, TRIGGER);
+    void Init(DigitalOutput output, float probability) {
+        Init(output, probability, TRIGGER);
     }
 
     /**
@@ -36,11 +38,8 @@ class ProbablisticOutput {
       \param probability percentage chance to trigger as a float from 0 to 1.
       \param mode defines the behavior of the rising / falling clock input on this output.
     */
-    void Init(uint8_t cv_pin, uint8_t led_pin, float probability, Mode mode) {
-        pinMode(cv_pin, OUTPUT);   // Gate/Trigger Output
-        pinMode(led_pin, OUTPUT);  // LED
-        cv_pin_ = cv_pin;
-        led_pin_ = led_pin;
+    void Init(DigitalOutput output, float probability, Mode mode) {
+        output_ = output;
         SetProb(probability);
         SetMode(mode);
     }
@@ -54,7 +53,7 @@ class ProbablisticOutput {
                 high();
                 break;
             case FLIP:
-                update(!state_);
+                output_.Update(!output_.On());
                 break;
         }
     }
@@ -68,7 +67,7 @@ class ProbablisticOutput {
         }
     }
 
-    inline bool State() { return state_; }
+    inline bool State() { return output_.On(); }
     inline bool GetMode() { return mode_; }
     inline void SetMode(Mode mode) { mode_ = mode; }
     inline String DisplayMode() { return (mode_ == 0) ? "TRIG" : "FLIP"; }
@@ -78,19 +77,11 @@ class ProbablisticOutput {
     inline void SetProb(float probability) { prob_ = constrain(int(float(MaxRandRange) * probability), 0, MaxRandRange); }
 
    private:
-    uint8_t cv_pin_;
-    uint8_t led_pin_;
-    bool state_;
+    DigitalOutput output_;
     int prob_;
     Mode mode_;
 
-    inline void high() { update(HIGH); }
+    inline void high() { output_.High(); }
 
-    inline void low() { update(LOW); }
-
-    void update(uint8_t state) {
-        digitalWrite(cv_pin_, state);
-        digitalWrite(led_pin_, state);
-        state_ = state;
-    }
+    inline void low() { output_.Low(); }
 };
