@@ -13,6 +13,8 @@ encoder to randomize the seed or adjust the pattern length. The user
 configurable parameters of seed and step length will be saved to EEPROM and
 will be recalled the next time you power on the module.
 
+{{< youtube _OhwvMgZHsY >}}
+
 ```yaml
 Encoder:
      short press: Toggle between editing the step length and selecting a seed.
@@ -38,6 +40,8 @@ mirror that signal according to a decreasing probability. Long press the
 encoder to change trigger modes. `Trig` will simply echo the trigger or
 gate received from the CLK input. `Flip` mode will toggle the output on
 or off upon each new CLK input.
+
+{{< youtube SHZaS9hu4qI >}}
 
 ```yaml
 Encoder:

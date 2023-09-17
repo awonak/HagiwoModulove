@@ -13,7 +13,7 @@ Simply click on the `Upload Firmware` button for the firmware you want, select y
 
 All of the source code along with instructions for setting up your development environment can be found on the GitHub repo at [https://github.com/awonak/HagiwoModulove/](https://github.com/awonak/HagiwoModulove/).
 
-[{{< image src="https://modulove.io/wp-content/uploads/2023/06/Modulove_A-RYTH-MATIK_Front_ON.webp" alt="A-RYTH-MATIK" style="float:right; left: -20%; position: relative; height: 300px">}}](/HagiwoModulove/arythmatik)
+[{{< image src="https://modulove.io/wp-content/uploads/2023/06/Modulove_A-RYTH-MATIK_Front_ON.webp" alt="A-RYTH-MATIK" style="float:right; position: relative; height: 300px">}}](/HagiwoModulove/arythmatik)
 
 ### [A-RYTH-MATIK](/HagiwoModulove/arythmatik)
 
@@ -29,7 +29,7 @@ Clock Input (0-5V)
 
 ### [SyncLFO](/HagiwoModulove/synclfo)
 
-[{{< image src="https://modulove.io/wp-content/uploads/2023/06/Modulove_LFO_Productshot_Front_ON.webp" alt="SyncLFO" style="float:right; left: -20%; position: relative; height: 300px">}}](/HagiwoModulove/synclfo)
+[{{< image src="https://modulove.io/wp-content/uploads/2023/06/Modulove_LFO_Productshot_Front_ON.webp" alt="SyncLFO" style="float:right; position: relative; height: 300px">}}](/HagiwoModulove/synclfo)
 
 Arduino Nano
 

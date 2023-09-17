@@ -55,7 +55,7 @@ current sequence step. The sequence length knob sets the number of steps
 in the sequence, ranging from 1 to 16 steps. Refrain count determines the
 number of times the sequence must complete before a new voltage may be set.
 
-demo video: [https://youtu.be/okj47TcXJXg](https://youtu.be/okj47TcXJXg)
+{{< youtube okj47TcXJXg >}}
 
 ```yaml
 Knob 1: Probability for new random voltage

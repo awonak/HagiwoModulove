@@ -93,6 +93,11 @@ paginate = 5
         name = "SyncLFO"
         url = "/synclfo"
         weight = 3
+      [[languages.en.menu.main]]
+        identifier = "contact"
+        name = "Contact"
+        url = "/contact"
+        weight = 4
 
 [module]
   replacements = "github.com/panr/hugo-theme-terminal -> themes/terminal"
