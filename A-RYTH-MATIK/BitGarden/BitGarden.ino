@@ -13,16 +13,16 @@
  * encoder to randomize the seed or adjust the pattern length. The user
  * configurable parameters of seed and step length will be saved to EEPROM and
  * will be recalled the next time you power on the module.
- * 
+ *
  * Encoder:
  *      short press: Toggle between editing the step length and selecting a seed.
  *      long press: Enter seed edit mode to manually provide a seed value.
- * 
+ *
  * CLK: Provide a gate or trigger for each output to repeat with decreasing
  *      probability in each output.
- * 
+ *
  * RST: Trigger this input to reseed the psudo random sequence.
- * 
+ *
  */
 
 // Flag for enabling debug print to serial monitoring output.
@@ -105,12 +105,12 @@ void loop() {
     hw.ProcessInputs();
 
     // When RST goes high, reseed and reset.
-    if (hw.Rst.State() == DigitalInput::STATE_RISING) {
+    if (hw.rst.State() == DigitalInput::STATE_RISING) {
         Reset();
     }
 
     // When step count wraps, reset step count and reseed.
-    if (hw.Clk.State() == DigitalInput::STATE_RISING) {
+    if (hw.clk.State() == DigitalInput::STATE_RISING) {
         step_count = ++step_count % step_length;
         if (step_count == 0) packet.Reseed();
         update_display = true;
@@ -118,31 +118,28 @@ void loop() {
 
     for (int i = 0; i < OUTPUT_COUNT; i++) {
         // With the seeded random, probablistic random calls will be determistic.
-        outputs[i].Update(hw.Clk.State());
+        outputs[i].Update(hw.clk.State());
     }
 
-    // Check for long press to endable editing seed.
-    // press and release for < 1 second to return 1 for short press
-    // press and release for > 1 second to return 2 for long press.
-    byte press = hw.encoder.pushType(1000);
+    // Read the encoder button press event.
+    Encoder::PressType press = hw.encoder.Pressed();
 
     // Short button press. Change editable parameter.
-    if (press == 1) {
+    if (press == Encoder::PRESS_SHORT) {
         // Next param on Main page.
         if (selected_page == PAGE_MAIN)
             selected_param = static_cast<Parameter>((selected_param + 1) % PARAM_LAST);
 
         // Next seed digit on Seed page.
-        if (selected_page == PAGE_SEED)
+        else if (selected_page == PAGE_SEED)
             seed_index = ++seed_index % 4;
 
         // Save changes made from previous parameter edits.
         SaveChanges();
         update_display = true;
     }
-
     // Long button press. Change menu page.
-    if (press == 2) {
+    else if (press == Encoder::PRESS_LONG) {
         if (selected_page == PAGE_MAIN) {
             selected_param = PARAM_NONE;
             temp_seed = packet.GetSeed();
@@ -156,8 +153,7 @@ void loop() {
     }
 
     // Read encoder for a change in direction and update the selected parameter.
-    // rotate() returns 0 for unchanged, 1 for increment, 2 for decrement.
-    UpdateParameter(hw.encoder.rotate());
+    UpdateParameter(hw.encoder.Rotate());
 
     // Render any new UI changes to the OLED display.
     UpdateDisplay();
@@ -197,34 +193,37 @@ void Reset() {
 }
 
 // Update the current selected parameter with the current movement of the encoder.
-void UpdateParameter(byte encoder_dir) {
+void UpdateParameter(Encoder::Direction dir) {
     if (selected_page == PAGE_MAIN) {
-        if (selected_param == PARAM_SEED) UpdateSeed(encoder_dir);
-        if (selected_param == PARAM_LENGTH) UpdateLength(encoder_dir);
+        if (selected_param == PARAM_SEED) UpdateSeed(dir);
+        if (selected_param == PARAM_LENGTH) UpdateLength(dir);
     }
     if (selected_page == PAGE_SEED) {
-        EditSeed(encoder_dir);
+        EditSeed(dir);
     }
 }
 
 // Randomize the current seed if the encoder has moved in either direction.
-void UpdateSeed(byte dir) {
-    if (dir == 0) return;
-    if (dir == 1) packet.NextSeed();
-    if (dir == 2) packet.PrevSeed();
+void UpdateSeed(Encoder::Direction dir) {
+    if (dir == Encoder::DIRECTION_UNCHANGED) return;
+    else if (dir == Encoder::DIRECTION_INCREMENT) packet.NextSeed();
+    else if (dir == Encoder::DIRECTION_DECREMENT) packet.PrevSeed();
     update_display = true;
     state_changed = true;
 }
 
 // Adjust the step length for the given input direction (1=increment, 2=decrement).
-void UpdateLength(byte dir) {
-    if (dir == 1 && step_length <= MAX_LENGTH) SetLength(++step_length);
-    if (dir == 2 && step_length >= MIN_LENGTH) SetLength(--step_length);
+void UpdateLength(Encoder::Direction dir) {
+    if (dir == Encoder::DIRECTION_INCREMENT && step_length <= MAX_LENGTH) {
+        SetLength(++step_length);
+    } else if (dir == Encoder::DIRECTION_DECREMENT && step_length >= MIN_LENGTH) {
+        SetLength(--step_length);
+    }
 }
 
 // Edit the current seed.
-void EditSeed(byte dir) {
-    if (dir == 0) return;
+void EditSeed(Encoder::Direction dir) {
+    if (dir == Encoder::DIRECTION_UNCHANGED) return;
 
     int change;
     if (seed_index == 0)
@@ -236,9 +235,9 @@ void EditSeed(byte dir) {
     else if (seed_index == 3)
         change = 0x0001;
 
-    if (dir == 1)
+    if (dir == Encoder::DIRECTION_INCREMENT)
         temp_seed += change;
-    else if (dir == 2)
+    else if (dir == Encoder::DIRECTION_DECREMENT)
         temp_seed -= change;
 
     update_display = true;
@@ -259,12 +258,6 @@ void UpdateDisplay() {
 
     hw.display.clearDisplay();
 
-    // Draw app title.
-    hw.display.setTextSize(0);
-    hw.display.setCursor(36, 0);
-    hw.display.println("BIT GARDEN");
-    hw.display.drawFastHLine(0, 10, SCREEN_WIDTH, WHITE);
-
     switch (selected_page) {
         case PAGE_MAIN:
             DisplayMainPage();
@@ -279,7 +272,16 @@ void UpdateDisplay() {
     hw.display.display();
 }
 
+void PageTitle(String title) {
+    // Draw page title.
+    hw.display.setTextSize(0);
+    hw.display.setCursor(36, 0);
+    hw.display.println(title);
+    hw.display.drawFastHLine(0, 10, SCREEN_WIDTH, WHITE);
+}
+
 void DisplayMainPage() {
+    PageTitle("BIT GARDEN");
     // Draw boxes for pattern length.
     int start = 26;
     int top = 16;
@@ -292,8 +294,8 @@ void DisplayMainPage() {
         // Determine how much top padding to use.
         int _top = top;
         if (step_length <= 8) _top += 8;
-        if (step_length <= 16) _top += 6;
-        if (step_length <= 24) _top += 4;
+        else if (step_length <= 16) _top += 6;
+        else if (step_length <= 24) _top += 4;
         // Draw box, fill current step.
         (i == step_count + 1)
             ? hw.display.fillRect(left, _top, boxSize, boxSize, 1)
@@ -335,6 +337,7 @@ void DisplayMainPage() {
 }
 
 void DisplaySeedPage() {
+    PageTitle("EDIT SEED");
     // Draw seed
     hw.display.setTextSize(2);
     hw.display.setCursor(42, 32);

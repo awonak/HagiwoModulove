@@ -37,7 +37,7 @@ enum MenuPage {
 MenuPage selected_page = PAGE_MAIN;
 
 // Script config definitions
-const uint8_t PARAM_COUNT = 2;   // Count of editable parameters.
+const uint8_t PARAM_COUNT = 2;  // Count of editable parameters.
 
 // Script state variables.
 byte selected_out = 0;
@@ -80,26 +80,24 @@ void loop() {
 
     // Input clock has gone high, call each output's On() for a chance to
     // trigger that output.
-    if (hw.Clk.State() == DigitalInput::STATE_RISING) {
+    if (hw.clk.State() == DigitalInput::STATE_RISING) {
         for (int i = 0; i < OUTPUT_COUNT; i++) {
             outputs[i].On();
         }
     }
 
     // Input clock has gone low, turn off Outputs.
-    if (hw.Clk.State() == DigitalInput::STATE_FALLING) {
+    if (hw.clk.State() == DigitalInput::STATE_FALLING) {
         for (int i = 0; i < OUTPUT_COUNT; i++) {
             outputs[i].Off();
         }
     }
 
-    // Check for long press to endable editing seed.
-    // press and release for < 1 second to return 1 for short press
-    // press and release for > 1 second to return 2 for long press.
-    byte press = hw.encoder.pushType(1000);
+    // Read the encoder button press event.
+    Encoder::PressType press = hw.encoder.Pressed();
 
     // Short button press. Change editable parameter.
-    if (press == 1) {
+    if (press == Encoder::PRESS_SHORT) {
         // Next param on Main page.
         if (selected_page == PAGE_MAIN)
             selected_param = ++selected_param % PARAM_COUNT;
@@ -108,7 +106,7 @@ void loop() {
     }
 
     // Long button press. Change menu page.
-    if (press == 2) {
+    if (press == Encoder::PRESS_LONG) {
         if (selected_page == PAGE_MAIN) {
             selected_page = PAGE_MODE;
             selected_param = 2;
@@ -121,29 +119,31 @@ void loop() {
 
     // Read encoder for a change in direction and update the selected parameter.
     // rotate() returns 0 for unchanged, 1 for increment, 2 for decrement.
-    UpdateParameter(hw.encoder.rotate());
+    UpdateParameter(hw.encoder.Rotate());
 
     // Render any new UI changes to the OLED display.
     UpdateDisplay();
 }
 
-void UpdateParameter(byte encoder_dir) {
-    if (encoder_dir == 0) return;
-    if (selected_param == 0) UpdateOutput(encoder_dir);
-    if (selected_param == 1) UpdateProb(encoder_dir);
-    if (selected_param == 2) UpdateMode(encoder_dir);
+void UpdateParameter(Encoder::Direction dir) {
+    if (dir == Encoder::DIRECTION_UNCHANGED) return;
+    if (selected_param == 0) UpdateOutput(dir);
+    if (selected_param == 1) UpdateProb(dir);
+    if (selected_param == 2) UpdateMode(dir);
 }
 
-void UpdateOutput(byte encoder_dir) {
-    if (encoder_dir == 1 && selected_out < OUTPUT_COUNT - 1) selected_out++;
-    if (encoder_dir == 2 && selected_out > 0) selected_out--;
+void UpdateOutput(Encoder::Direction dir) {
+    if (dir == Encoder::DIRECTION_INCREMENT && selected_out < OUTPUT_COUNT - 1)
+        selected_out++;
+    if (dir == Encoder::DIRECTION_DECREMENT && selected_out > 0)
+        selected_out--;
     update_display = true;
 }
 
-void UpdateMode(byte encoder_dir) {
+void UpdateMode(Encoder::Direction dir) {
     Mode newMode;
-    if (encoder_dir == 1) newMode = Mode::FLIP;
-    if (encoder_dir == 2) newMode = Mode::TRIGGER;
+    if (dir == Encoder::DIRECTION_INCREMENT) newMode = Mode::FLIP;
+    if (dir == Encoder::DIRECTION_DECREMENT) newMode = Mode::TRIGGER;
     // Update the mode for all outputs.
     for (int i = 0; i < OUTPUT_COUNT; i++) {
         outputs[i].SetMode(newMode);
@@ -151,9 +151,9 @@ void UpdateMode(byte encoder_dir) {
     update_display = true;
 }
 
-void UpdateProb(byte encoder_dir) {
-    if (encoder_dir == 1) outputs[selected_out].IncProb();
-    if (encoder_dir == 2) outputs[selected_out].DecProb();
+void UpdateProb(Encoder::Direction dir) {
+    if (dir == Encoder::DIRECTION_INCREMENT) outputs[selected_out].IncProb();
+    if (dir == Encoder::DIRECTION_DECREMENT) outputs[selected_out].DecProb();
     update_display = true;
 }
 
