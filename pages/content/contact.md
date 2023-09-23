@@ -15,3 +15,5 @@ Want to discuss other ideas related to my modular, firmware development, or
 anything else on your mind? Shoot me an email at:
 
 [adam.wonak@gmail.com](adam.wonak@gmail.com)
+
+{{< image src="/HagiwoModulove/adam_horror.jpg" title="Adam Wonak" >}}

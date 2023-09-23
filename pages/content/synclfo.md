@@ -81,6 +81,8 @@ does not respond to the trigger input; instead it endlessly cycles between the
 attack and release phases. Curve options include logarithmic, linear and
 exponential.
 
+{{< youtube r2EI1wnIoRg >}}
+
 ```yaml
 Knob 1: Attack
 Knob 2: Release
@@ -104,6 +106,8 @@ subdivision of 1 and the polyrhythm will trigger every beat.
 
 When in OR mode, any beat that has more than one rhythm trigger will output
 an accented 5v, otherwise a single rhythm trigger will output 3v.
+
+{{< youtube wcTAcc08-tY >}}
 
 ```yaml
 Knob 1: Polyrhythm count 1
