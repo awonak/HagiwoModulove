@@ -13,8 +13,6 @@ encoder to randomize the seed or adjust the pattern length. The user
 configurable parameters of seed and step length will be saved to EEPROM and
 will be recalled the next time you power on the module.
 
-{{< youtube _OhwvMgZHsY >}}
-
 {{< youtube PlufCV3CNw8 >}}
 
 ```yaml
