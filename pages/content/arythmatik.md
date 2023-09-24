@@ -15,6 +15,8 @@ will be recalled the next time you power on the module.
 
 {{< youtube _OhwvMgZHsY >}}
 
+{{< youtube PlufCV3CNw8 >}}
+
 ```yaml
 Encoder:
      short press: Toggle between editing the step length and selecting a seed.
@@ -28,7 +30,7 @@ RST: Trigger this input to reseed the psudo random sequence.
 CV1-6: Gate output with decreasing probability.
 ```
 
-{{< firmware_button hex="A-RYTH-MATIK_BitGarden.hex" >}}
+{{< firmware_button hex="A-RYTH-MATIK_BitGarden.hex" buttonText="Flash Bit Garden Firmware" >}}
 
 ## Uncertainty
 
@@ -55,4 +57,4 @@ CV1-6: Gate output with decreasing probability.
 
 ```
 
-{{< firmware_button hex="A-RYTH-MATIK_Uncertainty.hex" >}}
+{{< firmware_button hex="A-RYTH-MATIK_Uncertainty.hex" buttonText="Flash Uncertainty Firmware">}}

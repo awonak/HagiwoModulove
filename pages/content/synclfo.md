@@ -22,7 +22,7 @@ GATE_IN: Gate in / Re-trig
 CV_OUT: Envelope Output
 ```
 
-{{< firmware_button hex="SyncLFO_ADSR.hex" >}}
+{{< firmware_button hex="SyncLFO_ADSR.hex" buttonText="Flash ADSR Firmware" >}}
 
 ## Baby4
 
@@ -31,6 +31,8 @@ CV_OUT: Envelope Output
 Each knob can be set to
 a 0 to 10v value based on the knob position. Each trigger received by the
 clock input will advance the output voltage to the next knob value.
+
+{{< youtube f330NK89ajE >}}
 
 ```yaml
 Knob 1: Step 1 voltage
@@ -42,7 +44,7 @@ TRIG_IN: Advance sequence step
 CV_OUT: Current step voltage
 ```
 
-{{< firmware_button hex="SyncLFO_Baby4.hex" >}}
+{{< firmware_button hex="SyncLFO_Baby4.hex" buttonText="Flash Baby4 Firmware" >}}
 
 ## GenerativeSequencer
 
@@ -67,7 +69,7 @@ TRIG_IN: Advance sequence step
 CV_OUT: Current step voltage
 ```
 
-{{< firmware_button hex="SyncLFO_GenerativeSequencer.hex" >}}
+{{< firmware_button hex="SyncLFO_GenerativeSequencer.hex" buttonText="Flash GenerativeSequencer Firmware" >}}
 
 ## MultiModeEnv
 
@@ -93,7 +95,7 @@ GATE_IN: Gate in / Re-trig
 CV_OUT: Envelope Output
 ```
 
-{{< firmware_button hex="SyncLFO_MultiModeEnv.hex" >}}
+{{< firmware_button hex="SyncLFO_MultiModeEnv.hex" buttonText="Flash MultiModeEnv Firmware" >}}
 
 ## Polyrhythm
 
@@ -125,4 +127,4 @@ TRIG_IN: Trigger Input to advance the rhythm counter
 CV_OUT: CV Output for polyrhythm triggers
 ```
 
-{{< firmware_button hex="SyncLFO_Polyrhythm.hex" >}}
+{{< firmware_button hex="SyncLFO_Polyrhythm.hex" buttonText="Flash Polyrhythm Firmware" >}}
