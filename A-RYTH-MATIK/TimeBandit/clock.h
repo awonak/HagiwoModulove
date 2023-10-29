@@ -22,7 +22,8 @@ class Clock {
         mod_ = mod;
         factor_ = factor;
         SetBPM(DEFAULT_BPM, millis());
-        output.High(); // Go!
+        output.High();
+        high_ = true;
     }
 
     int BPM() {
@@ -42,11 +43,7 @@ class Clock {
 
         int bpm = MINUTE / (period_ * PPQN);
         if (bpm_ != bpm) {
-            bpm_ = bpm;
-            recalculateDuty(now);
-            // TODO: we want to restart deadline, but not on divisions.
-            // high_ = true;
-            // output_.High();
+            SetBPM(bpm, now);
         }
     }
 
@@ -70,7 +67,7 @@ class Clock {
     int duty_;
     long deadline_;
     long lastInput_ = millis();
-    bool high_ = true;
+    bool high_ = false;
 
     // Determine the duty cycle for the clock modification.
     void recalculateDuty(long now) {
