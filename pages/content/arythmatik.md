@@ -56,3 +56,29 @@ CV1-6: Gate output with decreasing probability.
 ```
 
 {{< firmware_button hex="A-RYTH-MATIK_Uncertainty.hex" buttonText="Flash Uncertainty Firmware">}}
+
+
+## Time Bandit
+
+Fixed binary clock divider and sub oscillator. [[source](https://github.com/awonak/HagiwoModulove/tree/main/A-RYTH-MATIK/TimeBandit/TimeBandit.ino)]
+
+The 6 digital outputs will produce a 50% duty cycle square wave in fixed
+binary divisions of the incoming CLK signal. This can be used as a typical
+clock divider or provide sub octaves of the incoming audio rate signal.
+Each output is one octave lower than the previous.
+
+
+{{< youtube xAgkP6kvcgA >}}
+
+```yaml
+Encoder: Unused.
+
+CLK: Clock input used to produce fixed binary divisions.
+
+RST: Trigger this input to reset the division counter.
+
+CV1-6: Binary clock divisions of 1, 2, 4, 8, 16, 32.
+
+```
+
+{{< firmware_button hex="A-RYTH-MATIK_TimeBandit.hex" buttonText="Flash Time Bandit Firmware">}}

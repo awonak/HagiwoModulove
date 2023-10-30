@@ -7,3 +7,6 @@
 [submodule "A-RYTH-MATIK/Uncertainty/src/libmodulove"]
 	path = A-RYTH-MATIK/Uncertainty/src/libmodulove
 	url = https://github.com/awonak/libmodulove.git
+[submodule "A-RYTH-MATIK/TimeBandit/src/libmodulove"]
+	path = A-RYTH-MATIK/TimeBandit/src/libmodulove
+	url = https://github.com/awonak/libmodulove.git
