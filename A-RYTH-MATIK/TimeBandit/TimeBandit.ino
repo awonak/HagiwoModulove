@@ -67,7 +67,7 @@ void setup() {
         for (int i = 0; i < 3; i++) {
             ypos += ymod;
             hw.display.setCursor(xpos, ypos);
-            hw.display.println("div: " + String(clockDiv[count].division));
+            hw.display.println("CLK / " + String(clockDiv[count].division));
             count++;
         }
         xpos += xmod;
