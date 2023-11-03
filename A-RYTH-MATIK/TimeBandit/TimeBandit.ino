@@ -41,6 +41,7 @@ void setup() {
     hw.Init();
 
     // Define each of the fixed clock divisions.
+    // NOTE: This is binary value, clock divisions are bit shifted left by one.
     clockDiv[0] = {hw.outputs[0], 1};
     clockDiv[1] = {hw.outputs[1], 2};
     clockDiv[2] = {hw.outputs[2], 4};
@@ -63,11 +64,11 @@ void setup() {
     int ypos = 4;
     int xpos = 6;
     int count;
-    for (int i = 0; i < 2; i++) {
-        for (int i = 0; i < 3; i++) {
+    for (int i = 0; i < 2; i++) {      // columns
+        for (int j = 0; j < 3; j++) {  // rows
             ypos += ymod;
             hw.display.setCursor(xpos, ypos);
-            hw.display.println("CLK / " + String(clockDiv[count].division));
+            hw.display.println("CLK /" + String(clockDiv[count].division<<1));
             count++;
         }
         xpos += xmod;
