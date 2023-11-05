@@ -1,0 +1,157 @@
+/**
+ * @file PerlinNoise.ino
+ * @author Adam Wonak (https://github.com/awonak/)
+ * @brief Smooth random voltage to chaotic noise with various logic input modes
+ * @version 0.1
+ * @date 2023-11-03
+ *
+ * @copyright Copyright (c) 2023
+ *
+ * Smooth random voltages to chaotic noise using the Perlin noise algorithm.
+ * Unlike random() in which each new random value has no correlation to it's
+ * previous value, Perlin noise has a more organic appearance because it
+ * produces a naturally ordered “smooth” sequence of pseudo-random numbers.
+ *
+ *  Knob 1 - Frequency: the rate at which the value changes.
+ *
+ *  Knob 2 - Noise Read Factor: how far ahead to read in the random noise buffer
+ *           Fully CCW will produce a smooth value, fully CW will skip ahead
+ *           to random values.
+ *
+ *  Knob 3 - Bit Crush: Reduce the bit depth of the output.
+ *
+ *  Knob 4 - Input mode: Open, Sample & Hold, Track & Hold, Gate.
+ *
+ *
+ * Input Trigger/Gate Modes:
+ *
+ * OPEN - The output will continually produce random voltages regardless of CLK input.
+ *
+ * SAMPLE_HOLD - Produce a new stable random voltage upon each trigger input.
+ *
+ * TRIGGER_HOLD - Track and Hold, output the random voltage and hold the value upon gate input.
+ *
+ * GATE - Only output voltage while the Gate input is high.
+ *
+ */
+
+#include <FastLED.h>
+// #include <avr/io.h>
+
+// GPIO Pin mapping.
+#define P1 0  // frequency
+#define P2 1  // buffer read factor
+#define P3 3  // bit depth
+#define P4 5  // input logic mode
+
+#define GATE_IN 3  // Trigger/Gate input for logic modes
+#define CV_OUT 10  // CV Output for random voltage
+
+// Flag for enabling debug print to serial monitoring output.
+const bool DEBUG = false;
+const byte max_step = 4;  // Max steps in the CV sequence (corresponding to number of knobs)
+const float freqFactor = 0.0195;
+const float noiseReadFactor = 0.0098;
+
+bool gate = 1;  // External gate input detect: 0=gate off, 1=gate on
+bool old_gate = 0;
+int nx = 0;       // Perlin noise buffer x read value
+int ny = 0;       // Perlin noise buffer y read value
+byte val = 0;     // current output value
+byte hold = 0;    // held output value
+byte output = 0;  // output value used according to selected mode + gate state.
+
+enum InputMode {
+    OPEN,
+    SAMPLE_HOLD,
+    TRACK_HOLD,
+    GATE
+};
+InputMode mode = OPEN;
+
+void setup() {
+    pinMode(GATE_IN, INPUT);  // Gate/Trigger in
+    pinMode(CV_OUT, OUTPUT);  // CV output
+
+    // Register setting for high frequency PWM.
+    TCCR1A = 0b00100001;
+    TCCR1B = 0b00100001;
+}
+
+void loop() {
+    // Detect current selected input mode.
+    InputMode inputMode = readMode();
+
+    // Read gate input.
+    old_gate = gate;
+    gate = digitalRead(GATE_IN);
+
+    // Detect if gate has just opened.
+    if (old_gate == 0 && gate == 1) {
+        switch (inputMode) {
+            case SAMPLE_HOLD:
+            case TRACK_HOLD:
+                hold = val;
+                break;
+        }
+    }
+    // Detect if gate has just closed.
+    if (old_gate == 1 && gate == 0) {
+        if (inputMode == GATE) {
+            hold = 0;
+        }
+    }
+
+    // Calculate the output value.
+    nx += pow(2, analogRead(P2) * noiseReadFactor);
+    val = inoise8(nx, ++ny);
+    int depth = map(analogRead(P3), 0, 1023, 0, 7);
+    val = bitcrush(val, depth);
+
+    switch (inputMode) {
+        case OPEN:
+            output = val;
+            break;
+        case SAMPLE_HOLD:
+            output = hold;
+            break;
+        case TRACK_HOLD:
+            output = (gate == 1) ? hold : val;
+            break;
+        case GATE:
+            output = (gate == 1) ? val : 0;
+            break;
+    }
+
+    analogWrite(CV_OUT, output);
+
+    // Frequency or rate of change.
+    float read = (1023 * freqFactor) - (analogRead(P1) * freqFactor);
+    unsigned long freqPeriod = pow(2, read);
+    if (freqPeriod < 1000) {
+        delayMicroseconds(freqPeriod);
+    } else {
+        delay(float(freqPeriod) / 1000.f);
+    }
+}
+
+int bitcrush(int val, byte depth) {
+    return (val >> depth) * pow(2, depth);
+}
+
+InputMode readMode() {
+    switch (analogRead(P4) >> 8) {
+        case 0:
+            return OPEN;
+            break;
+        case 1:
+            return SAMPLE_HOLD;
+            break;
+        case 2:
+            return TRACK_HOLD;
+            break;
+        case 3:
+            return GATE;
+            break;
+    }
+}
