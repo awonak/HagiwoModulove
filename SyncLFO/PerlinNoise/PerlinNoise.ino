@@ -11,6 +11,10 @@
  * Unlike random() in which each new random value has no correlation to it's
  * previous value, Perlin noise has a more organic appearance because it
  * produces a naturally ordered “smooth” sequence of pseudo-random numbers.
+ * 
+ * Additionally, the random values produced by the Perlin noise algorithm
+ * adhere to a bell curve distribution, meaning the OUT cv will hover around
+ * 5v and the BI cv output will hover around 0v.
  *
  *  Knob 1 - Frequency: the rate at which the value changes.
  *
@@ -29,9 +33,9 @@
  *
  * SAMPLE_HOLD - Produce a new stable random voltage upon each trigger input.
  *
- * TRIGGER_HOLD - Track and Hold, output the random voltage and hold the value upon gate input.
+ * TRACK_HOLD - Track and Hold, output the random voltage and hold the value upon gate input.
  *
- * GATE - Only output voltage while the Gate input is high.
+ * GATE - Also known as Hold and Track, only output voltage while the Gate input is high.
  *
  */
 
@@ -40,16 +44,14 @@
 
 // GPIO Pin mapping.
 #define P1 0  // frequency
-#define P2 1  // buffer read factor
-#define P3 3  // bit depth
+#define P2 1  // buffer read factor / chaos
+#define P3 3  // bit depth / bitcrusher
 #define P4 5  // input logic mode
 
 #define GATE_IN 3  // Trigger/Gate input for logic modes
 #define CV_OUT 10  // CV Output for random voltage
 
-// Flag for enabling debug print to serial monitoring output.
-const bool DEBUG = false;
-const byte max_step = 4;  // Max steps in the CV sequence (corresponding to number of knobs)
+// Exponential curve factors for frequency and noise buffer.
 const float freqFactor = 0.0195;
 const float noiseReadFactor = 0.0098;
 
@@ -57,7 +59,7 @@ bool gate = 1;  // External gate input detect: 0=gate off, 1=gate on
 bool old_gate = 0;
 int nx = 0;       // Perlin noise buffer x read value
 int ny = 0;       // Perlin noise buffer y read value
-byte val = 0;     // current output value
+byte val = 0;     // current value from the perlin noise algorithm
 byte hold = 0;    // held output value
 byte output = 0;  // output value used according to selected mode + gate state.
 
@@ -92,7 +94,6 @@ void loop() {
             case SAMPLE_HOLD:
             case TRACK_HOLD:
                 hold = val;
-                break;
         }
     }
     // Detect if gate has just closed.
@@ -108,6 +109,7 @@ void loop() {
     int depth = map(analogRead(P3), 0, 1023, 0, 7);
     val = bitcrush(val, depth);
 
+    // Determine the output value based on the current selected input mode.
     switch (inputMode) {
         case OPEN:
             output = val;
@@ -122,7 +124,6 @@ void loop() {
             output = (gate == 1) ? val : 0;
             break;
     }
-
     analogWrite(CV_OUT, output);
 
     // Frequency or rate of change.
@@ -136,6 +137,9 @@ void loop() {
 }
 
 int bitcrush(int val, byte depth) {
+    if (depth == 0) {
+        return val;
+    }
     return (val >> depth) * pow(2, depth);
 }
 
