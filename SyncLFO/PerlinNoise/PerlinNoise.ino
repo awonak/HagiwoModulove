@@ -60,8 +60,7 @@ bool old_gate = 0;
 int nx = 0;       // Perlin noise buffer x read value
 int ny = 0;       // Perlin noise buffer y read value
 byte val = 0;     // current value from the perlin noise algorithm
-byte hold = 0;    // held output value
-byte output = 0;  // output value used according to selected mode + gate state.
+byte hold = 0;    // held output value for s&h / t&h
 
 enum InputMode {
     OPEN,
@@ -110,21 +109,7 @@ void loop() {
     val = bitcrush(val, depth);
 
     // Determine the output value based on the current selected input mode.
-    switch (inputMode) {
-        case OPEN:
-            output = val;
-            break;
-        case SAMPLE_HOLD:
-            output = hold;
-            break;
-        case TRACK_HOLD:
-            output = (gate == 1) ? hold : val;
-            break;
-        case GATE:
-            output = (gate == 1) ? val : 0;
-            break;
-    }
-    analogWrite(CV_OUT, output);
+    analogWrite(CV_OUT, output(inputMode));
 
     // Frequency or rate of change.
     float read = (1023 * freqFactor) - (analogRead(P1) * freqFactor);
@@ -157,5 +142,18 @@ InputMode readMode() {
         case 3:
             return GATE;
             break;
+    }
+}
+
+byte output(InputMode inputMode) {
+    switch (inputMode) {
+        case OPEN:
+            return val;
+        case SAMPLE_HOLD:
+            return hold;
+        case TRACK_HOLD:
+            return (gate == 1) ? hold : val;
+        case GATE:
+            return (gate == 1) ? val : 0;
     }
 }
