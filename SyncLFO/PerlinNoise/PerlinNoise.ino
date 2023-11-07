@@ -11,7 +11,7 @@
  * Unlike random() in which each new random value has no correlation to it's
  * previous value, Perlin noise has a more organic appearance because it
  * produces a naturally ordered “smooth” sequence of pseudo-random numbers.
- * 
+ *
  * Additionally, the random values produced by the Perlin noise algorithm
  * adhere to a bell curve distribution, meaning the OUT cv will hover around
  * 5v and the BI cv output will hover around 0v.
@@ -57,10 +57,11 @@ const float noiseReadFactor = 0.0098;
 
 bool gate = 1;  // External gate input detect: 0=gate off, 1=gate on
 bool old_gate = 0;
-int nx = 0;       // Perlin noise buffer x read value
-int ny = 0;       // Perlin noise buffer y read value
-byte val = 0;     // current value from the perlin noise algorithm
-byte hold = 0;    // held output value for s&h / t&h
+int nx = 0;      // Perlin noise buffer x read value
+int ny = 0;      // Perlin noise buffer y read value
+byte depth = 0;  // Bitcrush depth.
+byte val = 0;    // current value from the perlin noise algorithm
+byte hold = 0;   // held output value for s&h / t&h
 
 enum InputMode {
     OPEN,
@@ -105,7 +106,7 @@ void loop() {
     // Calculate the output value.
     nx += pow(2, analogRead(P2) * noiseReadFactor);
     val = inoise8(nx, ++ny);
-    int depth = map(analogRead(P3), 0, 1023, 0, 7);
+    depth = map(analogRead(P3), 0, 1023, 0, 7);
     val = bitcrush(val, depth);
 
     // Determine the output value based on the current selected input mode.
@@ -132,16 +133,12 @@ InputMode readMode() {
     switch (analogRead(P4) >> 8) {
         case 0:
             return OPEN;
-            break;
         case 1:
             return SAMPLE_HOLD;
-            break;
         case 2:
             return TRACK_HOLD;
-            break;
         case 3:
             return GATE;
-            break;
     }
 }
 
