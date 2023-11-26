@@ -16,11 +16,9 @@
  * adhere to a bell curve distribution, meaning the OUT cv will hover around
  * 5v and the BI cv output will hover around 0v.
  *
- *  Knob 1 - Frequency: the rate at which the value changes.
+ *  Knob 1 - Offset: Increase or decrease the center point the voltage hovers around.
  *
- *  Knob 2 - Noise Read Factor: how far ahead to read in the random noise buffer
- *           Fully CCW will produce a smooth value, fully CW will skip ahead
- *           to random values.
+ *  Knob 2 - Frequency: the rate at which the value changes.
  *
  *  Knob 3 - Bit Crush: Reduce the bit depth of the output.
  *
@@ -40,11 +38,10 @@
  */
 
 #include <FastLED.h>
-// #include <avr/io.h>
 
 // GPIO Pin mapping.
-#define P1 0  // frequency
-#define P2 1  // buffer read factor / chaos
+#define P1 0  // offset
+#define P2 1  // frequency
 #define P3 3  // bit depth / bitcrusher
 #define P4 5  // input logic mode
 
@@ -52,16 +49,18 @@
 #define CV_OUT 10  // CV Output for random voltage
 
 // Exponential curve factors for frequency and noise buffer.
-const float freqFactor = 0.0195;
 const float noiseReadFactor = 0.0098;
 
 bool gate = 1;  // External gate input detect: 0=gate off, 1=gate on
 bool old_gate = 0;
-int nx = 0;      // Perlin noise buffer x read value
-int ny = 0;      // Perlin noise buffer y read value
-byte depth = 0;  // Bitcrush depth.
-byte val = 0;    // current value from the perlin noise algorithm
-byte hold = 0;   // held output value for s&h / t&h
+int nx = 0;             // Perlin noise buffer x read value
+int seed = random16();  // Start with a new random Perlin noise Y-axis each time.
+byte depth = 0;         // Bitcrush depth.
+byte val = 0;           // current value from the perlin noise algorithm
+byte hold = 0;          // held output value for s&h / t&h
+
+unsigned long frequencyInterval = 1 << 14;  // Frequency timer (increase for slower rate)
+unsigned long previousTime = 0;             // Store last time Frequency was updated
 
 enum InputMode {
     OPEN,
@@ -103,22 +102,28 @@ void loop() {
         }
     }
 
-    // Calculate the output value.
-    nx += pow(2, analogRead(P2) * noiseReadFactor);
-    val = inoise8(nx, ++ny);
-    depth = map(analogRead(P3), 0, 1023, 0, 7);
-    val = bitcrush(val, depth);
-
-    // Determine the output value based on the current selected input mode.
-    analogWrite(CV_OUT, output(inputMode));
-
     // Frequency or rate of change.
-    float read = (1023 * freqFactor) - (analogRead(P1) * freqFactor);
-    unsigned long freqPeriod = pow(2, read);
-    if (freqPeriod < 1000) {
-        delayMicroseconds(freqPeriod);
-    } else {
-        delay(float(freqPeriod) / 1000.f);
+    long offset =  map(analogRead(P1), 0, 1024, -63, 63);
+    unsigned long currentTime = micros();
+
+    if (currentTime - previousTime > frequencyInterval) {
+        // Calculate the output value.
+        nx += pow(2, analogRead(P2) * noiseReadFactor);
+        val = inoise8(nx, seed);
+        if (offset > 0) {
+            val = constrain(val + offset, 0, 255);
+        } else {
+            val = (val > abs(offset)) ? val + offset : 0;
+        }
+
+        // Reduce the bit depth of the output value.
+        depth = analogRead(P3) >> 7;
+        val = bitcrush(val, depth);
+
+        // Set next frequency update deadline.
+        previousTime = currentTime;
+        // Determine the output value based on the current selected input mode.
+        analogWrite(CV_OUT, output(inputMode));
     }
 }
 
