@@ -44,7 +44,7 @@ jobs:
     strategy:
         matrix:
           module: ["SyncLFO"]
-          firmware: ["ADSR", "Baby4", "GenerativeSequencer", "MultiModeEnv", "Polyrhythm"]
+          firmware: ["ADSR", "Baby4", "GenerativeSequencer", "MultiModeEnv", "Polyrhythm", "PerlinNoise"]
 
     steps:
         - name: Clone repo

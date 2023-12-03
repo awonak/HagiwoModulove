@@ -69,6 +69,7 @@ jobs:
           wget https://github.com/awonak/HagiwoModulove/releases/latest/download/SyncLFO_GenerativeSequencer.hex
           wget https://github.com/awonak/HagiwoModulove/releases/latest/download/SyncLFO_MultiModeEnv.hex
           wget https://github.com/awonak/HagiwoModulove/releases/latest/download/SyncLFO_Polyrhythm.hex
+          wget https://github.com/awonak/HagiwoModulove/releases/latest/download/SyncLFO_PerlinNoise.hex
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v2
         with:
