@@ -54,7 +54,8 @@ const float noiseReadFactor = 0.0098;
 bool gate = 1;  // External gate input detect: 0=gate off, 1=gate on
 bool old_gate = 0;
 int nx = 0;             // Perlin noise buffer x read value
-int seed = random16();  // Start with a new random Perlin noise Y-axis each time.
+int ny = 0;             // Perlin noise buffer y read value
+int seed = random16();  // Start with a new random Perlin noise Z-axis each time.
 byte depth = 0;         // Bitcrush depth.
 byte val = 0;           // current value from the perlin noise algorithm
 byte hold = 0;          // held output value for s&h / t&h
@@ -109,7 +110,7 @@ void loop() {
     if (currentTime - previousTime > frequencyInterval) {
         // Calculate the output value.
         nx += pow(2, analogRead(P2) * noiseReadFactor);
-        val = inoise8(nx, seed);
+        val = inoise8(nx, ++ny, seed);
         if (offset > 0) {
             val = constrain(val + offset, 0, 255);
         } else {
