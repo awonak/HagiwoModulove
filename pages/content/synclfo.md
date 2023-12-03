@@ -97,6 +97,39 @@ CV_OUT: Envelope Output
 
 {{< firmware_button hex="SyncLFO_MultiModeEnv.hex" buttonText="Flash MultiModeEnv Firmware" >}}
 
+## Perlin Noise
+
+Smooth random voltages to chaotic noise using the Perlin noise algorithm. [[source](https://github.com/awonak/HagiwoModulove/blob/main/SyncLFO/PerlinNoise/PerlinNoise.ino)]
+
+Unlike random() in which each new random value has no correlation to it's
+previous value, Perlin noise has a more organic appearance because it
+produces a naturally ordered "smooth" sequence of pseudo-random numbers.
+
+Additionally, the random values produced by the Perlin noise algorithm
+adhere to a bell curve distribution, meaning the OUT cv will hover around
+5v and the BI cv output will hover around 0v. When the Knob 1 offset is
+fully CCW the output will produce 0-5v hovering around 2.5v and when it is
+fully CW the output will produce 5-10v hovering around 8.5v.
+
+{{< youtube 7n8kDnDUpMI >}}
+
+```yaml
+Knob 1: Offset: Increase or decrease the center point the voltage hovers around
+Knob 2: Frequency: the rate at which the value changes
+Knob 3: Bit Crush: Reduce the bit depth of the output
+Knob 4: Input mode: Open, Sample & Hold, Track & Hold, Gate
+
+Input Trigger/Gate Modes:
+    OPEN: The output will continually produce random voltages regardless of CLK input.
+    SAMPLE_HOLD: Produce a new stable random voltage upon each trigger input.
+    TRACK_HOLD: Track and Hold, output the random voltage and hold the value upon gate input.
+    GATE: Also known as Hold and Track, only output voltage while the Gate input is high.
+
+```
+
+{{< firmware_button hex="SyncLFO_PerlinNoise.hex" buttonText="Flash Perlin Noise Firmware" >}}
+
+
 ## Polyrhythm
 
 Generate polyrhythms based on 16 step counter knobs. [[source](https://github.com/awonak/HagiwoModulove/blob/main/SyncLFO/Polyrhythm/Polyrhythm.ino)]
