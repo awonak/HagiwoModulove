@@ -13,7 +13,7 @@ jobs:
           - board: arduino:avr:nano
             boardpath: arduino.avr.nano
           - board: arduino:avr:nano:cpu=atmega328old
-            boardpath: arduino:avr:nano.atmega328old
+            boardpath: arduino.avr.nano.atmega328old
           - board: lgt8fx:avr:328
             boardpath: lgt8fx.avr.328
 
@@ -62,7 +62,7 @@ jobs:
             - board: arduino:avr:nano
               boardpath: arduino.avr.nano
             - board: arduino:avr:nano:cpu=atmega328old
-              boardpath: arduino:avr:nano.atmega328old
+              boardpath: arduino.avr.nano.atmega328old
             - board: lgt8fx:avr:328
               boardpath: lgt8fx.avr.328
 
@@ -89,7 +89,7 @@ jobs:
         - name: Upload release artifacts
           uses: actions/upload-artifact@v4
           with:
-            name: release-artifacts-${{ matrix.board}}-${{ matrix.firmware }}
+            name: release-artifacts-${{ matrix.boardpath}}-${{ matrix.firmware }}
             path: ./${{ matrix.module}}/release/*.hex
 
   release:
