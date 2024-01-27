@@ -89,13 +89,13 @@ jobs:
     steps:
       - name: Download release artifacts
         uses: actions/download-artifact@master
-        # if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/')
         with:
           name: release-artifacts
           path: releases/
 
       - name: Create Release and attach files
         uses: softprops/action-gh-release@v1
-        # if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/')
         with:
           files: releases/*.hex
