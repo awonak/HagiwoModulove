@@ -40,7 +40,7 @@ jobs:
           BOARD: ${{ matrix.board}}
 
       - name: Upload release artifacts
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: release-artifacts
           path: ./${{ matrix.module}}/release/*.hex
@@ -77,7 +77,7 @@ jobs:
             BOARD: ${{ matrix.board}}
 
         - name: Upload release artifacts
-          uses: actions/upload-artifact@v2
+          uses: actions/upload-artifact@v4
           with:
             name: release-artifacts
             path: ./${{ matrix.module}}/release/*.hex
@@ -89,13 +89,13 @@ jobs:
     steps:
       - name: Download release artifacts
         uses: actions/download-artifact@v4
-        if: startsWith(github.ref, 'refs/tags/')
+        # if: startsWith(github.ref, 'refs/tags/')
         with:
           name: release-artifacts
           path: releases/
 
       - name: Create Release and attach files
         uses: softprops/action-gh-release@v1
-        if: startsWith(github.ref, 'refs/tags/')
+        # if: startsWith(github.ref, 'refs/tags/')
         with:
           files: releases/*.hex
