@@ -9,6 +9,13 @@ jobs:
         module: ["A-RYTH-MATIK"]
         firmware: ["BitGarden", "Uncertainty", "TimeBandit"]
         board: ["arduino:avr:nano", "arduino:avr:nano:cpu=atmega328old", "lgt8fx:avr:328"]
+        include:
+          - board: arduino:avr:nano
+            boardpath: arduino.avr.nano
+          - board: arduino:avr:nano:cpu=atmega328old
+            boardpath: arduino:avr:nano.atmega328old
+          - board: lgt8fx:avr:328
+            boardpath: lgt8fx.avr.328
 
     steps:
       - name: Clone repo
@@ -31,18 +38,16 @@ jobs:
       - name: Compile sketch and rename output file for release
         working-directory: ./${{ matrix.module}}
         run: |
-          arduino-cli compile -v -b ${{ matrix.board}} ${{ matrix.firmware}} -e --output-dir=./build/${BOARD//:/.}
-          arduino-cli compile -v -b ${{ matrix.board}} --build-property "build.extra_flags=-DENCODER_REVERSED" ${{ matrix.firmware}} -e --output-dir=./build_reversed/${BOARD//:/.}
+          arduino-cli compile -v -b ${{ matrix.board}} ${{ matrix.firmware}} -e --output-dir=./build/${{ matrix.boardpath }}
+          arduino-cli compile -v -b ${{ matrix.board}} --build-property "build.extra_flags=-DENCODER_REVERSED" ${{ matrix.firmware}} -e --output-dir=./build_reversed/${{ matrix.boardpath }}
           mkdir -p ./release
-          cp ./build/${BOARD//:/.}/${{ matrix.firmware }}.ino.hex ./release/${{ matrix.module}}_${{ matrix.firmware }}.${BOARD//:/.}.hex
-          cp ./build_reversed/${BOARD//:/.}/${{ matrix.firmware }}.ino.hex ./release/${{ matrix.module}}_${{ matrix.firmware }}.${BOARD//:/.}.reversed.hex
-        env:
-          BOARD: ${{ matrix.board}}
+          cp ./build/${{ matrix.boardpath }}/${{ matrix.firmware }}.ino.hex ./release/${{ matrix.module}}_${{ matrix.firmware }}.${{ matrix.boardpath }}.hex
+          cp ./build_reversed/${{ matrix.boardpath }}/${{ matrix.firmware }}.ino.hex ./release/${{ matrix.module}}_${{ matrix.firmware }}.${{ matrix.boardpath }}.reversed.hex
 
       - name: Upload release artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: release-artifacts-${{ matrix.board}}-${{ matrix.firmware }}
+          name: release-artifacts-${{ matrix.boardpath }}-${{ matrix.firmware }}
           path: ./${{ matrix.module}}/release/*.hex
 
 
@@ -53,6 +58,13 @@ jobs:
           module: ["SyncLFO"]
           firmware: ["ADSR", "Baby4", "GenerativeSequencer", "MultiModeEnv", "Polyrhythm", "PerlinNoise"]
           board: ["arduino:avr:nano", "arduino:avr:nano:cpu=atmega328old", "lgt8fx:avr:328"]
+          include:
+            - board: arduino:avr:nano
+              boardpath: arduino.avr.nano
+            - board: arduino:avr:nano:cpu=atmega328old
+              boardpath: arduino:avr:nano.atmega328old
+            - board: lgt8fx:avr:328
+              boardpath: lgt8fx.avr.328
 
     steps:
         - name: Clone repo
@@ -71,10 +83,8 @@ jobs:
         - name: Compile sketch and rename output file for release
           working-directory: ./${{ matrix.module}}
           run: |
-            arduino-cli compile -v -b ${{ matrix.board}} ${{ matrix.firmware}} -e --output-dir=./build/${BOARD//:/.}
-            mkdir -p ./release && cp ./build/${BOARD//:/.}/${{ matrix.firmware }}.ino.hex ./release/${{ matrix.module}}_${{ matrix.firmware }}.${BOARD//:/.}.hex
-          env:
-            BOARD: ${{ matrix.board}}
+            arduino-cli compile -v -b ${{ matrix.board}} ${{ matrix.firmware}} -e --output-dir=./build/${{ matrix.boardpath }}
+            mkdir -p ./release && cp ./build/${{ matrix.boardpath }}/${{ matrix.firmware }}.ino.hex ./release/${{ matrix.module}}_${{ matrix.firmware }}.${{ matrix.boardpath }}.hex
 
         - name: Upload release artifacts
           uses: actions/upload-artifact@v4
