@@ -42,7 +42,7 @@ jobs:
       - name: Upload release artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: release-artifacts-${BOARD//:/.}-${{ matrix.firmware }}
+          name: release-artifacts-${{ matrix.board}}-${{ matrix.firmware }}
           path: ./${{ matrix.module}}/release/*.hex
 
 
@@ -79,7 +79,7 @@ jobs:
         - name: Upload release artifacts
           uses: actions/upload-artifact@v4
           with:
-            name: release-artifacts-${BOARD//:/.}-${{ matrix.firmware }}
+            name: release-artifacts-${{ matrix.board}}-${{ matrix.firmware }}
             path: ./${{ matrix.module}}/release/*.hex
 
   release:
