@@ -13,7 +13,7 @@
   </button>
   <button
     arduino-uploader
-    hex-href='/HagiwoModulove/releases/{{ .Get "hex" | safeURL }}'.nanoOldBootloader.hex
+    hex-href='/HagiwoModulove/releases/{{ .Get "hex" | safeURL }}.nanoOldBootloader.hex'
     board="nanoOldBootloader"
     [optional]verify
     [optional]port-filters='[{"usbProductId":46388,"usbVendorId":1241}]'
@@ -24,10 +24,10 @@
   </button>
   <button
     arduino-uploader
-    hex-href='/HagiwoModulove/releases/{{ .Get "hex" | safeURL }}'
+    hex-href='/HagiwoModulove/releases/{{ .Get "hex" | safeURL }}.lgt8f328p.hex'
     board="lgt8f328p"
     [optional]verify
-    [optional]port-filters='[{"usbProductId":46388,"usbVendorId":1241}]'.lgt8f328p.hex
+    [optional]port-filters='[{"usbProductId":46388,"usbVendorId":1241}]'
   >
       {{ with .Get "buttonText" }}{{ . | plainify }}{{ else -}} Upload Firmware {{ end }} to LGT8F328P
       &nbsp;
