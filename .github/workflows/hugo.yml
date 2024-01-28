@@ -57,13 +57,6 @@ jobs:
             --minify \
             --baseURL "${{ steps.pages.outputs.base_url }}/"
 
-      # - name: Download artifact
-      #   id: download-artifact
-      #   uses: dawidd6/action-download-artifact@v3
-      #   with:
-      #     workflow: build_release.yml
-      #     path: ./pages/public/releases
-
       - name: Download release files
         id: download-release-files
         uses: dsaltares/fetch-gh-release-asset@master
@@ -93,4 +86,4 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v2
+        uses: actions/deploy-pages@v3
