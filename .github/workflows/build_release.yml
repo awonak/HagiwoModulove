@@ -11,11 +11,11 @@ jobs:
         board: ["arduino:avr:nano", "arduino:avr:nano:cpu=atmega328old", "lgt8fx:avr:328"]
         include:
           - board: arduino:avr:nano
-            boardpath: arduino.avr.nano
+            boardpath: nano
           - board: arduino:avr:nano:cpu=atmega328old
-            boardpath: arduino.avr.nano.atmega328old
+            boardpath: nanoOldBootloader
           - board: lgt8fx:avr:328
-            boardpath: lgt8fx.avr.328
+            boardpath: lgt8f328p
 
     steps:
       - name: Clone repo
@@ -60,11 +60,11 @@ jobs:
           board: ["arduino:avr:nano", "arduino:avr:nano:cpu=atmega328old", "lgt8fx:avr:328"]
           include:
             - board: arduino:avr:nano
-              boardpath: arduino.avr.nano
+              boardpath: nano
             - board: arduino:avr:nano:cpu=atmega328old
-              boardpath: arduino.avr.nano.atmega328old
+              boardpath: nanoOldBootloader
             - board: lgt8fx:avr:328
-              boardpath: lgt8fx.avr.328
+              boardpath: lgt8f328p
 
     steps:
         - name: Clone repo
