@@ -76,7 +76,7 @@ jobs:
           repo: "awonak/HagiwoModulove"
           version: ${{github.ref_name}}
           regex: true
-          file: "*\\.hex"
+          file: ".*\\.hex"
           target: "pages/public/releases"
           token: ${{ secrets.GITHUB_TOKEN }}
 
