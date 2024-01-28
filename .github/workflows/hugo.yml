@@ -9,6 +9,9 @@ on:
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
+  # Allows this workflow to be called from other workflows.
+  workflow_call:
+
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
   contents: read
@@ -58,18 +61,28 @@ jobs:
           hugo \
             --minify \
             --baseURL "${{ steps.pages.outputs.base_url }}/"
-      - name: Fetch release hex
-        working-directory: ./pages/public/releases
-        run: |
-          wget https://github.com/awonak/HagiwoModulove/releases/latest/download/A-RYTH-MATIK_BitGarden.hex
-          wget https://github.com/awonak/HagiwoModulove/releases/latest/download/A-RYTH-MATIK_Uncertainty.hex
-          wget https://github.com/awonak/HagiwoModulove/releases/latest/download/A-RYTH-MATIK_TimeBandit.hex
-          wget https://github.com/awonak/HagiwoModulove/releases/latest/download/SyncLFO_ADSR.hex
-          wget https://github.com/awonak/HagiwoModulove/releases/latest/download/SyncLFO_Baby4.hex
-          wget https://github.com/awonak/HagiwoModulove/releases/latest/download/SyncLFO_GenerativeSequencer.hex
-          wget https://github.com/awonak/HagiwoModulove/releases/latest/download/SyncLFO_MultiModeEnv.hex
-          wget https://github.com/awonak/HagiwoModulove/releases/latest/download/SyncLFO_Polyrhythm.hex
-          wget https://github.com/awonak/HagiwoModulove/releases/latest/download/SyncLFO_PerlinNoise.hex
+
+      # - name: Download artifact
+      #   id: download-artifact
+      #   uses: dawidd6/action-download-artifact@v3
+      #   with:
+      #     workflow: build_release.yml
+      #     path: ./pages/public/releases
+
+      - name: Download release files
+        id: download-release-files
+        uses: dsaltares/fetch-gh-release-asset@master
+        with:
+          repo: "awonak/HagiwoModulove"
+          version: ${{github.ref_name}}
+          regex: true
+          file: "*\\.hex"
+          target: "pages/public/releases"
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Display structure of Hugo build files
+        run: ls -R
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v2
         with:
