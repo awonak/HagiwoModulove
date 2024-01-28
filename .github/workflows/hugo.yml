@@ -77,11 +77,11 @@ jobs:
           version:  ${{ github.event.release.id }}
           regex: true
           file: ".*\\.hex"
-          target: "pages/public/releases"
+          target: "pages/public/releases/"
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Display structure of Hugo build files
-        run: ls -R
+        run: ls -R ./pages/public
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v2
