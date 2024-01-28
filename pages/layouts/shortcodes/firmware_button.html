@@ -1,13 +1,37 @@
 {{ if .Get "hex" }}
-<button
-  arduino-uploader
-  hex-href="/HagiwoModulove/releases/{{ .Get "hex" | safeURL }}"
-  board="{{ with .Get "board"}}{{ . }}{{ else -}} nano {{- end }}" 
-  [optional]verify
-  [optional]port-filters='[{"usbProductId":46388,"usbVendorId":1241}]'
->
-    {{ with .Get "buttonText" }}{{ . | plainify }}{{ else -}} Upload Firmware {{ end }}
-    &nbsp;
-    <span class="upload-progress"></span>
-</button>
+<div class="flash-firmware">
+  <button
+    arduino-uploader
+    hex-href='/HagiwoModulove/releases/{{ .Get "hex" | safeURL }}.nano.hex'
+    board="nano"
+    [optional]verify
+    [optional]port-filters='[{"usbProductId":46388,"usbVendorId":1241}]'
+  >
+      {{ with .Get "buttonText" }}{{ . | plainify }}{{ else -}} Upload Firmware {{ end }} to Arduino Nano
+      &nbsp;
+      <span class="upload-progress"></span>
+  </button>
+  <button
+    arduino-uploader
+    hex-href='/HagiwoModulove/releases/{{ .Get "hex" | safeURL }}'.nanoOldBootloader.hex
+    board="nanoOldBootloader"
+    [optional]verify
+    [optional]port-filters='[{"usbProductId":46388,"usbVendorId":1241}]'
+  >
+      {{ with .Get "buttonText" }}{{ . | plainify }}{{ else -}} Upload Firmware {{ end }} to Arduino Nano (old bootloader)
+      &nbsp;
+      <span class="upload-progress"></span>
+  </button>
+  <button
+    arduino-uploader
+    hex-href='/HagiwoModulove/releases/{{ .Get "hex" | safeURL }}'
+    board="lgt8f328p"
+    [optional]verify
+    [optional]port-filters='[{"usbProductId":46388,"usbVendorId":1241}]'.lgt8f328p.hex
+  >
+      {{ with .Get "buttonText" }}{{ . | plainify }}{{ else -}} Upload Firmware {{ end }} to LGT8F328P
+      &nbsp;
+      <span class="upload-progress"></span>
+  </button>
+</div>
 {{ end }}

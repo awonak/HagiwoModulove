@@ -22,7 +22,7 @@ GATE_IN: Gate in / Re-trig
 CV_OUT: Envelope Output
 ```
 
-{{< firmware_button hex="SyncLFO_ADSR.hex" buttonText="Flash ADSR Firmware" >}}
+{{< firmware_button hex="SyncLFO_ADSR" buttonText="Flash ADSR Firmware" >}}
 
 ## Baby4
 
@@ -44,7 +44,7 @@ TRIG_IN: Advance sequence step
 CV_OUT: Current step voltage
 ```
 
-{{< firmware_button hex="SyncLFO_Baby4.hex" buttonText="Flash Baby4 Firmware" >}}
+{{< firmware_button hex="SyncLFO_Baby4" buttonText="Flash Baby4 Firmware" >}}
 
 ## GenerativeSequencer
 
@@ -69,7 +69,7 @@ TRIG_IN: Advance sequence step
 CV_OUT: Current step voltage
 ```
 
-{{< firmware_button hex="SyncLFO_GenerativeSequencer.hex" buttonText="Flash GenerativeSequencer Firmware" >}}
+{{< firmware_button hex="SyncLFO_GenerativeSequencer" buttonText="Flash GenerativeSequencer Firmware" >}}
 
 ## MultiModeEnv
 
@@ -95,7 +95,7 @@ GATE_IN: Gate in / Re-trig
 CV_OUT: Envelope Output
 ```
 
-{{< firmware_button hex="SyncLFO_MultiModeEnv.hex" buttonText="Flash MultiModeEnv Firmware" >}}
+{{< firmware_button hex="SyncLFO_MultiModeEnv" buttonText="Flash MultiModeEnv Firmware" >}}
 
 ## Perlin Noise
 
@@ -127,7 +127,7 @@ Input Trigger/Gate Modes:
 
 ```
 
-{{< firmware_button hex="SyncLFO_PerlinNoise.hex" buttonText="Flash Perlin Noise Firmware" >}}
+{{< firmware_button hex="SyncLFO_PerlinNoise" buttonText="Flash Perlin Noise Firmware" >}}
 
 
 ## Polyrhythm
@@ -160,4 +160,4 @@ TRIG_IN: Trigger Input to advance the rhythm counter
 CV_OUT: CV Output for polyrhythm triggers
 ```
 
-{{< firmware_button hex="SyncLFO_Polyrhythm.hex" buttonText="Flash Polyrhythm Firmware" >}}
+{{< firmware_button hex="SyncLFO_Polyrhythm" buttonText="Flash Polyrhythm Firmware" >}}

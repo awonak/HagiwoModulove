@@ -28,7 +28,7 @@ RST: Trigger this input to reseed the psudo random sequence.
 CV1-6: Gate output with decreasing probability.
 ```
 
-{{< firmware_button hex="A-RYTH-MATIK_BitGarden.hex" buttonText="Flash Bit Garden Firmware" >}}
+{{< encoder_firmware_button hex="A-RYTH-MATIK_BitGarden" buttonText="Flash Bit Garden Firmware" >}}
 
 ## Uncertainty
 
@@ -55,7 +55,7 @@ CV1-6: Gate output with decreasing probability.
 
 ```
 
-{{< firmware_button hex="A-RYTH-MATIK_Uncertainty.hex" buttonText="Flash Uncertainty Firmware">}}
+{{< encoder_firmware_button hex="A-RYTH-MATIK_Uncertainty" buttonText="Flash Uncertainty Firmware">}}
 
 
 ## Time Bandit
@@ -80,4 +80,4 @@ CV1-6: Binary clock divisions of 2, 4, 8, 16, 32, 64.
 
 ```
 
-{{< firmware_button hex="A-RYTH-MATIK_TimeBandit.hex" buttonText="Flash Time Bandit Firmware">}}
+{{< encoder_firmware_button hex="A-RYTH-MATIK_TimeBandit" buttonText="Flash Time Bandit Firmware">}}
