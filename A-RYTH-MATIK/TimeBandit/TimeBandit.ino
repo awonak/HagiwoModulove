@@ -42,7 +42,7 @@ struct ClockDivision {
 // Declare A-RYTH-MATIK hardware variable.
 Arythmatik hw;
 ClockDivision clockDiv[OUTPUT_COUNT];
-byte counter;
+int counter;
 byte mode;  // Normal, Select Output, Edit.
 byte selected_out = 0;
 bool update_display = true;
@@ -130,12 +130,18 @@ void UpdateParameter(Encoder::Direction dir) {
         int division = clockDiv[selected_out].division;
         switch (dir) {
             case Encoder::DIRECTION_DECREMENT:
-                if (division > 1) clockDiv[selected_out].division = division >> 1;
-                update_display = true;
+                if (division > 1) {
+                    clockDiv[selected_out].division = division >> 1;
+                    counter = 0;
+                    update_display = true;
+                }
                 break;
             case Encoder::DIRECTION_INCREMENT:
-                if (division < 4096) clockDiv[selected_out].division = division << 1;
-                update_display = true;
+                if (division < 4096) {
+                    clockDiv[selected_out].division = division << 1;
+                    counter = 0;
+                    update_display = true;
+                }
                 break;
         }
     }
