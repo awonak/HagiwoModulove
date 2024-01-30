@@ -21,6 +21,9 @@
 // Note: this affects performance and locks LED 4 & 5 on HIGH.
 // #define DEBUG
 
+// Flag for reversing the encoder direction.
+//#define ENCODER_REVERSED
+
 using namespace modulove;
 using namespace arythmatik;
 
