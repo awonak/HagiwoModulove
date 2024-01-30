@@ -121,7 +121,6 @@ void loop() {
     }
 
     // Read encoder for a change in direction and update the selected parameter.
-    // rotate() returns 0 for unchanged, 1 for increment, 2 for decrement.
     UpdateParameter(hw.encoder.Rotate());
 
     // Render any new UI changes to the OLED display.

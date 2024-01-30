@@ -70,13 +70,15 @@ Each output is one octave lower than the previous.
 {{< youtube xAgkP6kvcgA >}}
 
 ```yaml
-Encoder: Unused.
+
+ENCODER: Select which division to edit. Single press to change the
+         selected output. Single press again to leave edit mode.
 
 CLK: Clock input used to produce fixed binary divisions.
 
 RST: Trigger this input to reset the division counter.
 
-CV1-6: Binary clock divisions of 2, 4, 8, 16, 32, 64.
+CV1-6: Configurable binary clock divisions of 2, 4, 8, 16, 32..8192
 
 ```
 

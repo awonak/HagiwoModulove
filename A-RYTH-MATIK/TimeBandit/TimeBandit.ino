@@ -12,8 +12,8 @@
  * clock divider or provide sub octaves of the incoming audio rate signal.
  * Each output is one octave lower than the previous.
  *
- * ENCODER: Select which division to edit. Single press to edit the selected
- *          output. Single press again to leave edit mode.
+ * ENCODER: Select which division to edit. Single press to change the
+            selected output. Single press again to leave edit mode.
  *
  * CLK: Clock input used to derrive fixed binary divisions.
  *
