@@ -30,7 +30,7 @@
 // #define DEBUG
 
 // Flag for reversing the encoder direction.
-// #define ENCODER_REVERSED
+//#define ENCODER_REVERSED
 
 // Include the Modulove hardware library.
 #include "src/libmodulove/arythmatik.h"
@@ -59,8 +59,6 @@ const int LENGTH_ADDR = sizeof(uint16_t);
 enum MenuPage {
     PAGE_MAIN,
     PAGE_SEED,
-    PAGE_GATE,
-    PAGE_LAST,
 };
 MenuPage selected_page = PAGE_MAIN;
 
@@ -69,19 +67,9 @@ enum Parameter {
     PARAM_NONE,
     PARAM_LENGTH,
     PARAM_SEED,
-    PARAM_GATE,
     PARAM_LAST,
 };
 Parameter selected_param = PARAM_NONE;
-
-// Enum constants for ouput gate type.
-enum OutputType {
-    OUTPUT_TRIG,
-    OUTPUT_GATE,
-    OUTPUT_FLIP,
-    OUTPUT_LAST,
-};
-OutputType output_type = OUTPUT_TRIG;
 
 // Script state variables.
 uint8_t step_length = 16;  // Length of psudo random trigger sequence (default 16 steps)
@@ -91,7 +79,6 @@ uint8_t seed_index;        // Indicated the seed digit to edit on Seed page.
 uint16_t temp_seed;        // Temporary seed for editing the current seed.
 
 // State variables for tracking OLED and editable parameter changes.
-bool page_select = false;
 bool state_changed = true;
 bool update_display = true;
 
@@ -142,59 +129,34 @@ void loop() {
 
     // Short button press. Change editable parameter.
     if (press == Encoder::PRESS_SHORT) {
-        // If we are in page select mode, set current page.
-        if (page_select) {
-            page_select = false;
-        }
         // Next param on Main page.
-        else if (selected_page == PAGE_MAIN) {
-            switch (selected_param) {
-                case PARAM_NONE:
-                    selected_param = PARAM_LENGTH;
-                    break;
-                case PARAM_LENGTH:
-                    selected_param = PARAM_SEED;
-                    break;
-                case PARAM_SEED:
-                    selected_param = PARAM_NONE;
-            }
-        }
+        if (selected_page == PAGE_MAIN)
+            selected_param = static_cast<Parameter>((selected_param + 1) % PARAM_LAST);
 
         // Next seed digit on Seed page.
-        else if (selected_page == PAGE_SEED) {
-            selected_param = PARAM_SEED;
-            seed_index = --seed_index % 4;
-        }
+        else if (selected_page == PAGE_SEED)
+            seed_index = ++seed_index % 4;
 
-        // Short press has no effect on Gate page.
-        else if (page_select == PAGE_GATE) {
-            selected_param = PARAM_GATE;
-        }
-
+        // Save changes made from previous parameter edits.
+        SaveChanges();
         update_display = true;
     }
     // Long button press. Change menu page.
     else if (press == Encoder::PRESS_LONG) {
-        // Toggle between menu page select mode.
-        if (!page_select) {
-            page_select = true;
+        if (selected_page == PAGE_MAIN) {
             selected_param = PARAM_NONE;
             temp_seed = packet.GetSeed();
-            seed_index = 3;  // Least significant digit
+            selected_page = PAGE_SEED;
         } else {
-            page_select = false;
-            selected_param = PARAM_NONE;
+            seed_index = 0;
             packet.UpdateSeed(temp_seed);
+            selected_page = PAGE_MAIN;
         }
-        SaveChanges();
         update_display = true;
     }
 
-    // Read encoder for a change in direction and update the selected page or
-    // parameter.
-    (page_select)
-        ? UpdatePage(hw.encoder.Rotate())
-        : UpdateParameter(hw.encoder.Rotate());
+    // Read encoder for a change in direction and update the selected parameter.
+    UpdateParameter(hw.encoder.Rotate());
 
     // Render any new UI changes to the OLED display.
     UpdateDisplay();
@@ -233,37 +195,22 @@ void Reset() {
     update_display = true;
 }
 
-// When in select page mode, scroll through menu pages.
-void UpdatePage(Encoder::Direction dir) {
-    if (dir == Encoder::DIRECTION_UNCHANGED)
-        return;
-    else if (dir == Encoder::DIRECTION_INCREMENT && selected_page < PAGE_LAST - 1)
-        selected_page = static_cast<MenuPage>((selected_page + 1) % PAGE_LAST);
-    else if (dir == Encoder::DIRECTION_DECREMENT && selected_page > PAGE_MAIN)
-        selected_page = static_cast<MenuPage>((selected_page - 1) % PAGE_LAST);
-    update_display = true;
-}
-
 // Update the current selected parameter with the current movement of the encoder.
 void UpdateParameter(Encoder::Direction dir) {
     if (selected_page == PAGE_MAIN) {
         if (selected_param == PARAM_SEED) UpdateSeed(dir);
         if (selected_param == PARAM_LENGTH) UpdateLength(dir);
-    } else if (selected_page == PAGE_SEED) {
+    }
+    if (selected_page == PAGE_SEED) {
         EditSeed(dir);
-    } else if (selected_page == PAGE_GATE) {
-        EditGate(dir);
     }
 }
 
 // Randomize the current seed if the encoder has moved in either direction.
 void UpdateSeed(Encoder::Direction dir) {
-    if (dir == Encoder::DIRECTION_UNCHANGED)
-        return;
-    else if (dir == Encoder::DIRECTION_INCREMENT)
-        packet.NextSeed();
-    else if (dir == Encoder::DIRECTION_DECREMENT)
-        packet.PrevSeed();
+    if (dir == Encoder::DIRECTION_UNCHANGED) return;
+    else if (dir == Encoder::DIRECTION_INCREMENT) packet.NextSeed();
+    else if (dir == Encoder::DIRECTION_DECREMENT) packet.PrevSeed();
     update_display = true;
     state_changed = true;
 }
@@ -299,19 +246,6 @@ void EditSeed(Encoder::Direction dir) {
     update_display = true;
 }
 
-// Change the current output type selection.
-void EditGate(Encoder::Direction dir) {
-    if (dir == Encoder::DIRECTION_UNCHANGED) return;
-
-    if (dir == Encoder::DIRECTION_INCREMENT && output_type < OUTPUT_LAST - 1) {
-        output_type = static_cast<OutputType>(output_type + 1);
-    } else if (dir == Encoder::DIRECTION_DECREMENT && output_type > 0) {
-        output_type = static_cast<OutputType>(output_type - 1);
-    }
-    update_display = true;
-    state_changed = true;
-}
-
 // Set the pattern length..
 void SetLength(uint8_t _step_length) {
     step_length = constrain(_step_length, MIN_LENGTH, MAX_LENGTH);
@@ -327,20 +261,12 @@ void UpdateDisplay() {
 
     hw.display.clearDisplay();
 
-    // Show UI indicator if in page select mode.
-    if (page_select) {
-        hw.display.drawChar(4, 0, 0x10, 1, 0, 1);
-    }
-
     switch (selected_page) {
         case PAGE_MAIN:
             DisplayMainPage();
             break;
         case PAGE_SEED:
             DisplaySeedPage();
-            break;
-        case PAGE_GATE:
-            DisplayGatePage();
             break;
         default:
             break;
@@ -370,12 +296,9 @@ void DisplayMainPage() {
     for (int i = 1; i <= step_length; i++) {
         // Determine how much top padding to use.
         int _top = top;
-        if (step_length <= 8)
-            _top += 8;
-        else if (step_length <= 16)
-            _top += 6;
-        else if (step_length <= 24)
-            _top += 4;
+        if (step_length <= 8) _top += 8;
+        else if (step_length <= 16) _top += 6;
+        else if (step_length <= 24) _top += 4;
         // Draw box, fill current step.
         (i == step_count + 1)
             ? hw.display.fillRect(left, _top, boxSize, boxSize, 1)
@@ -427,27 +350,4 @@ void DisplaySeedPage() {
     int start = 42;
     int top = 50;
     hw.display.drawFastHLine(start + (seed_index * 12), top, 10, WHITE);
-}
-
-void DisplayGatePage() {
-    PageTitle("OUTPUT TYPE");
-    // Draw output types
-    (output_type == OUTPUT_TRIG)
-        ? hw.display.fillRect(12, 20, 8, 8, 1)
-        : hw.display.drawRect(12, 20, 8, 8, 1);
-
-    (output_type == OUTPUT_GATE)
-        ? hw.display.fillRect(12, 32, 8, 8, 1)
-        : hw.display.drawRect(12, 32, 8, 8, 1);
-
-    (output_type == OUTPUT_FLIP)
-        ? hw.display.fillRect(12, 46, 8, 8, 1)
-        : hw.display.drawRect(12, 46, 8, 8, 1);
-
-    hw.display.setCursor(32, 20);
-    hw.display.println(String("Trig Mode"));
-    hw.display.setCursor(32, 32);
-    hw.display.println(String("Gate Mode"));
-    hw.display.setCursor(32, 46);
-    hw.display.println(String("Flip Mode"));
 }
