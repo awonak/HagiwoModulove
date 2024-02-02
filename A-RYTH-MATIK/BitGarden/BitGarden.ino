@@ -429,8 +429,17 @@ void DisplayMainPage() {
 void DisplaySeedPage() {
     PageTitle("EDIT SEED");
     // Draw seed
+    int xoffset;
+    if (temp_seed >= 0x1000)
+        xoffset = 42;
+    else if (temp_seed >= 0x0100)
+        xoffset = 54;
+    else if (temp_seed >= 0x0010)
+        xoffset = 66;
+    else if (temp_seed >= 0x0001)
+        xoffset = 78;
     hw.display.setTextSize(2);
-    hw.display.setCursor(42, 32);
+    hw.display.setCursor(xoffset, 32);
     hw.display.println(String(temp_seed, HEX));
 
     if (!page_select) {
