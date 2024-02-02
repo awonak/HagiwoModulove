@@ -57,13 +57,14 @@ const uint8_t MAX_LENGTH = 32;
 
 // EEPROM address references for saving state.
 const int SEED_ADDR = 0;
-const int LENGTH_ADDR = sizeof(uint16_t);
+const int LENGTH_ADDR = sizeof(uint16_t) + SEED_ADDR;
+const int MODE_ADDR = sizeof(uint8_t) + LENGTH_ADDR;
 
 // Enum constants for current display page.
 enum MenuPage {
     PAGE_MAIN,
     PAGE_SEED,
-    PAGE_GATE,
+    PAGE_MODE,
     PAGE_LAST,
 };
 MenuPage selected_page = PAGE_MAIN;
@@ -73,7 +74,6 @@ enum Parameter {
     PARAM_NONE,
     PARAM_LENGTH,
     PARAM_SEED,
-    PARAM_GATE,
     PARAM_LAST,
 };
 Parameter selected_param = PARAM_NONE;
@@ -88,7 +88,7 @@ Mode mode = TRIGGER;       // Current state for ouput behavior.
 
 // State variables for tracking OLED and editable parameter changes.
 bool page_select = false;
-bool state_changed = true;
+bool state_changed = false;
 bool update_display = true;
 
 void setup() {
@@ -131,6 +131,7 @@ void loop() {
         for (int i = 0; i < OUTPUT_COUNT; i++) {
             outputs[i].On();
         }
+
         update_display = true;
     }
 
@@ -146,51 +147,11 @@ void loop() {
 
     // Short button press. Change editable parameter.
     if (press == Encoder::PRESS_SHORT) {
-        // If we are in page select mode, set current page.
-        if (page_select) {
-            page_select = false;
-        }
-        // Next param on Main page.
-        else if (selected_page == PAGE_MAIN) {
-            switch (selected_param) {
-                case PARAM_NONE:
-                    selected_param = PARAM_LENGTH;
-                    break;
-                case PARAM_LENGTH:
-                    selected_param = PARAM_SEED;
-                    break;
-                case PARAM_SEED:
-                    selected_param = PARAM_NONE;
-            }
-        }
-
-        // Next seed digit on Seed page.
-        else if (selected_page == PAGE_SEED) {
-            selected_param = PARAM_SEED;
-            seed_index = --seed_index % 4;
-        }
-
-        // Short press has no effect on Gate page.
-        else if (page_select == PAGE_GATE) {
-            selected_param = PARAM_GATE;
-        }
-
-        update_display = true;
+        HandleShortPress();
     }
     // Long button press. Change menu page.
     else if (press == Encoder::PRESS_LONG) {
-        // Toggle between menu page select mode.
-        if (!page_select) {
-            page_select = true;
-            selected_param = PARAM_NONE;
-            temp_seed = packet.GetSeed();
-            seed_index = 3;  // Least significant digit
-        } else {
-            page_select = false;
-            selected_param = PARAM_NONE;
-        }
-        SaveChanges();
-        update_display = true;
+        HandleLongPress();
     }
 
     // Read encoder for a change in direction and update the selected page or
@@ -214,11 +175,15 @@ void InitState() {
         packet.NewRandomSeed();
     }
     // Read previously stored step_length from EEPROM memory. Update step_length if the value is non-zero.
-    uint8_t _step_length;
+    uint16_t _step_length;
     EEPROM.get(LENGTH_ADDR, _step_length);
     if (_step_length != 0 && _step_length != 0xFF) {
         SetLength(_step_length);
     }
+    // Read previously stored output mode into state variable.
+    uint8_t _mode;
+    EEPROM.get(MODE_ADDR, _mode);
+    mode = static_cast<Mode>(_mode);
 }
 
 // Save state to EEPROM if state has changed.
@@ -227,12 +192,62 @@ void SaveChanges() {
     state_changed = false;
     EEPROM.put(LENGTH_ADDR, step_length);
     EEPROM.put(SEED_ADDR, packet.GetSeed());
+    EEPROM.put(MODE_ADDR, mode);
 }
 
 // Reset the pattern sequence and reseed the psudo random deterministic pattern.
 void Reset() {
     packet.NewRandomSeed();
     step_count = 0;
+    update_display = true;
+}
+
+// Short press handler.
+void HandleShortPress() {
+    // If we are in page select mode, set current page.
+    if (page_select) {
+        page_select = false;
+    }
+    // Next param on Main page.
+    else if (selected_page == PAGE_MAIN) {
+        switch (selected_param) {
+            case PARAM_NONE:
+                selected_param = PARAM_LENGTH;
+                break;
+            case PARAM_LENGTH:
+                selected_param = PARAM_SEED;
+                break;
+            case PARAM_SEED:
+                selected_param = PARAM_NONE;
+        }
+    }
+
+    // Next seed digit on Seed page.
+    else if (selected_page == PAGE_SEED) {
+        seed_index = --seed_index % 4;
+    }
+
+    // Short press on Output Mode page will return to the Main page.
+    else if (selected_page == PAGE_MODE) {
+        selected_page = PAGE_MAIN;
+    }
+    SaveChanges();
+    update_display = true;
+}
+
+// Long press handler.
+void HandleLongPress() {
+    // Toggle between menu page select mode.
+    if (!page_select) {
+        page_select = true;
+        selected_param = PARAM_NONE;
+        temp_seed = packet.GetSeed();
+        seed_index = 3;  // Least significant digit
+    } else {
+        page_select = false;
+        selected_param = PARAM_NONE;
+    }
+    SaveChanges();
     update_display = true;
 }
 
@@ -254,12 +269,12 @@ void UpdateParameter(Encoder::Direction dir) {
         if (selected_param == PARAM_LENGTH) UpdateLength(dir);
     } else if (selected_page == PAGE_SEED) {
         EditSeed(dir);
-    } else if (selected_page == PAGE_GATE) {
-        EditGate(dir);
+    } else if (selected_page == PAGE_MODE) {
+        UpdateMode(dir);
     }
 }
 
-// Randomize the current seed if the encoder has moved in either direction.
+// Select seed from the previous seeds in the packet or add new random seed to packet.
 void UpdateSeed(Encoder::Direction dir) {
     if (dir == Encoder::DIRECTION_UNCHANGED)
         return;
@@ -278,6 +293,24 @@ void UpdateLength(Encoder::Direction dir) {
     } else if (dir == Encoder::DIRECTION_DECREMENT && step_length >= MIN_LENGTH) {
         SetLength(--step_length);
     }
+}
+
+// Change the current output type selection.
+void UpdateMode(Encoder::Direction dir) {
+    if (dir == Encoder::DIRECTION_UNCHANGED) return;
+
+    if (dir == Encoder::DIRECTION_INCREMENT && mode < MODE_LAST - 1) {
+        mode = static_cast<Mode>(mode + 1);
+
+    } else if (dir == Encoder::DIRECTION_DECREMENT && mode > 0) {
+        mode = static_cast<Mode>(mode - 1);
+    }
+    // Update the mode for all outputs.
+    for (int i = 0; i < OUTPUT_COUNT; i++) {
+        outputs[i].SetMode(mode);
+    }
+    update_display = true;
+    state_changed = true;
 }
 
 // Edit the current seed.
@@ -302,24 +335,6 @@ void EditSeed(Encoder::Direction dir) {
     packet.UpdateSeed(temp_seed);
     state_changed = true;
     update_display = true;
-}
-
-// Change the current output type selection.
-void EditGate(Encoder::Direction dir) {
-    if (dir == Encoder::DIRECTION_UNCHANGED) return;
-
-    if (dir == Encoder::DIRECTION_INCREMENT && mode < MODE_LAST - 1) {
-        mode = static_cast<Mode>(mode + 1);
-
-    } else if (dir == Encoder::DIRECTION_DECREMENT && mode > 0) {
-        mode = static_cast<Mode>(mode - 1);
-    }
-    // Update the mode for all outputs.
-    for (int i = 0; i < OUTPUT_COUNT; i++) {
-        outputs[i].SetMode(mode);
-    }
-    update_display = true;
-    state_changed = true;
 }
 
 // Set the pattern length..
@@ -349,8 +364,8 @@ void UpdateDisplay() {
         case PAGE_SEED:
             DisplaySeedPage();
             break;
-        case PAGE_GATE:
-            DisplayGatePage();
+        case PAGE_MODE:
+            DisplayOutputModePage();
             break;
         default:
             break;
@@ -450,9 +465,9 @@ void DisplaySeedPage() {
     }
 }
 
-void DisplayGatePage() {
-    PageTitle("OUTPUT TYPE");
-    // Draw output types
+void DisplayOutputModePage() {
+    PageTitle("OUTPUT MODE");
+    // Draw output modes
     (mode == TRIGGER)
         ? hw.display.fillRect(12, 20, 8, 8, 1)
         : hw.display.drawRect(12, 20, 8, 8, 1);
@@ -462,8 +477,8 @@ void DisplayGatePage() {
         : hw.display.drawRect(12, 32, 8, 8, 1);
 
     (mode == FLIP)
-        ? hw.display.fillRect(12, 46, 8, 8, 1)
-        : hw.display.drawRect(12, 46, 8, 8, 1);
+        ? hw.display.fillRect(12, 44, 8, 8, 1)
+        : hw.display.drawRect(12, 44, 8, 8, 1);
 
     hw.display.setCursor(32, 20);
     hw.display.println(String("Trig Mode"));
