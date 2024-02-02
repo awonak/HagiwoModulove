@@ -32,6 +32,10 @@
 // Flag for reversing the encoder direction.
 // #define ENCODER_REVERSED
 
+// Graphics identifiers
+#define RIGHT_TRIANGLE 0x10
+#define LEFT_TRIANGLE 0x11
+
 // Include the Modulove hardware library.
 #include "src/libmodulove/arythmatik.h"
 
@@ -184,7 +188,6 @@ void loop() {
         } else {
             page_select = false;
             selected_param = PARAM_NONE;
-            packet.UpdateSeed(temp_seed);
         }
         SaveChanges();
         update_display = true;
@@ -296,6 +299,8 @@ void EditSeed(Encoder::Direction dir) {
     else if (dir == Encoder::DIRECTION_DECREMENT)
         temp_seed -= change;
 
+    packet.UpdateSeed(temp_seed);
+    state_changed = true;
     update_display = true;
 }
 
@@ -334,7 +339,7 @@ void UpdateDisplay() {
 
     // Show UI indicator if in page select mode.
     if (page_select) {
-        hw.display.drawChar(4, 0, 0x10, 1, 0, 1);
+        hw.display.drawChar(4, 0, RIGHT_TRIANGLE, 1, 0, 1);
     }
 
     switch (selected_page) {
@@ -391,7 +396,7 @@ void DisplayMainPage() {
 
         // Show edit icon for length if it's selected.
         if (selected_param == PARAM_LENGTH && i == step_length) {
-            hw.display.drawChar(left, _top, 0x11, 1, 0, 1);
+            hw.display.drawChar(left, _top, LEFT_TRIANGLE, 1, 0, 1);
         }
 
         // Wrap the box draw cursor if we hit wrap count.
@@ -417,7 +422,7 @@ void DisplayMainPage() {
 
     // Show edit icon for seed if it's selected.
     if (selected_param == PARAM_SEED) {
-        hw.display.drawChar(120, 56, 0x11, 1, 0, 1);
+        hw.display.drawChar(120, 56, LEFT_TRIANGLE, 1, 0, 1);
     }
 }
 
@@ -428,10 +433,12 @@ void DisplaySeedPage() {
     hw.display.setCursor(42, 32);
     hw.display.println(String(temp_seed, HEX));
 
-    // Draw line under current editable digit.
-    int start = 42;
-    int top = 50;
-    hw.display.drawFastHLine(start + (seed_index * 12), top, 10, WHITE);
+    if (!page_select) {
+        // Draw line under current editable digit.
+        int start = 42;
+        int top = 50;
+        hw.display.drawFastHLine(start + (seed_index * 12), top, 10, WHITE);
+    }
 }
 
 void DisplayGatePage() {
@@ -455,4 +462,13 @@ void DisplayGatePage() {
     hw.display.println(String("Gate Mode"));
     hw.display.setCursor(32, 46);
     hw.display.println(String("Flip Mode"));
+
+    // Draw edit cursor.
+    if (!page_select) {
+        // Draw line under current editable digit.
+        int start = 4;
+        int top = 20;
+        int yoffset = 12;
+        hw.display.drawChar(start, top + (mode * yoffset), RIGHT_TRIANGLE, WHITE, BLACK, 1);
+    }
 }
