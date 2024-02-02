@@ -45,7 +45,7 @@ using namespace arythmatik;
 // Declare A-RYTH-MATIK hardware variable.
 Arythmatik hw;
 
-FixedProbablisticOutput outputs[OUTPUT_COUNT];
+ProbablisticOutput outputs[OUTPUT_COUNT];
 
 // Script config definitions
 const uint8_t MIN_LENGTH = 4;
@@ -74,21 +74,13 @@ enum Parameter {
 };
 Parameter selected_param = PARAM_NONE;
 
-// Enum constants for ouput gate type.
-enum OutputType {
-    OUTPUT_TRIG,
-    OUTPUT_GATE,
-    OUTPUT_FLIP,
-    OUTPUT_LAST,
-};
-OutputType output_type = OUTPUT_TRIG;
-
 // Script state variables.
 uint8_t step_length = 16;  // Length of psudo random trigger sequence (default 16 steps)
 uint8_t step_count = 0;    // Count of trigger steps since reset
 SeedPacket packet;         // SeedPacket contains the buffer of previous seeds
 uint8_t seed_index;        // Indicated the seed digit to edit on Seed page.
 uint16_t temp_seed;        // Temporary seed for editing the current seed.
+Mode mode = TRIGGER;       // Current state for ouput behavior.
 
 // State variables for tracking OLED and editable parameter changes.
 bool page_select = false;
@@ -125,16 +117,24 @@ void loop() {
         Reset();
     }
 
-    // When step count wraps, reset step count and reseed.
+    // Input clock has gone high, call each output's On() for a chance to
+    // trigger that output.
     if (hw.clk.State() == DigitalInput::STATE_RISING) {
+        // When step count wraps, reset step count and reseed.
         step_count = ++step_count % step_length;
         if (step_count == 0) packet.Reseed();
+
+        for (int i = 0; i < OUTPUT_COUNT; i++) {
+            outputs[i].On();
+        }
         update_display = true;
     }
 
-    for (int i = 0; i < OUTPUT_COUNT; i++) {
-        // With the seeded random, probablistic random calls will be determistic.
-        outputs[i].Update(hw.clk.State());
+    // Input clock has gone low, turn off Outputs.
+    if (hw.clk.State() == DigitalInput::STATE_FALLING) {
+        for (int i = 0; i < OUTPUT_COUNT; i++) {
+            outputs[i].Off();
+        }
     }
 
     // Read the encoder button press event.
@@ -303,10 +303,15 @@ void EditSeed(Encoder::Direction dir) {
 void EditGate(Encoder::Direction dir) {
     if (dir == Encoder::DIRECTION_UNCHANGED) return;
 
-    if (dir == Encoder::DIRECTION_INCREMENT && output_type < OUTPUT_LAST - 1) {
-        output_type = static_cast<OutputType>(output_type + 1);
-    } else if (dir == Encoder::DIRECTION_DECREMENT && output_type > 0) {
-        output_type = static_cast<OutputType>(output_type - 1);
+    if (dir == Encoder::DIRECTION_INCREMENT && mode < MODE_LAST - 1) {
+        mode = static_cast<Mode>(mode + 1);
+
+    } else if (dir == Encoder::DIRECTION_DECREMENT && mode > 0) {
+        mode = static_cast<Mode>(mode - 1);
+    }
+    // Update the mode for all outputs.
+    for (int i = 0; i < OUTPUT_COUNT; i++) {
+        outputs[i].SetMode(mode);
     }
     update_display = true;
     state_changed = true;
@@ -432,15 +437,15 @@ void DisplaySeedPage() {
 void DisplayGatePage() {
     PageTitle("OUTPUT TYPE");
     // Draw output types
-    (output_type == OUTPUT_TRIG)
+    (mode == TRIGGER)
         ? hw.display.fillRect(12, 20, 8, 8, 1)
         : hw.display.drawRect(12, 20, 8, 8, 1);
 
-    (output_type == OUTPUT_GATE)
+    (mode == GATE)
         ? hw.display.fillRect(12, 32, 8, 8, 1)
         : hw.display.drawRect(12, 32, 8, 8, 1);
 
-    (output_type == OUTPUT_FLIP)
+    (mode == FLIP)
         ? hw.display.fillRect(12, 46, 8, 8, 1)
         : hw.display.drawRect(12, 46, 8, 8, 1);
 

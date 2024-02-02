@@ -1,16 +1,31 @@
-#pragma once
+#ifndef OUTPUT_H
+#define OUTPUT_H
+
+// Include the Modulove hardware library.
+#include "src/libmodulove/arythmatik.h"
 
 using namespace modulove;
+
+enum Mode {
+    // Follow the state of the input clock.
+    TRIGGER,
+    // 100% Duty cycle gate.
+    GATE,
+    // Toggle between on/off with each clock input rising edge.
+    FLIP,
+
+    MODE_LAST,
+};
 
 const int MaxRandRange = 100;
 
 /**
   Class for handling probablistic triggers.
 */
-class FixedProbablisticOutput {
+class ProbablisticOutput {
    public:
-    FixedProbablisticOutput() {}
-    ~FixedProbablisticOutput() {}
+    ProbablisticOutput() {}
+    ~ProbablisticOutput() {}
 
     /**
     Initializes the probablistic cv output object with a given digital cv and
@@ -19,38 +34,65 @@ class FixedProbablisticOutput {
       \param probability percentage chance to trigger as a float from 0 to 1.
     */
     void Init(DigitalOutput output, float probability) {
+        Init(output, probability, TRIGGER);
+    }
+
+    /**
+    Initializes the probablistic cv output object with a given digital cv and
+    led pin pair.
+      \param output Instance of the cv output.
+      \param probability percentage chance to trigger as a float from 0 to 1.
+      \param mode defines the behavior of the rising / falling clock input on this output.
+    */
+    void Init(DigitalOutput output, float probability, Mode mode) {
         output_ = output;
-        setProb(probability);
+        SetProb(probability);
+        SetMode(mode);
     }
 
-    // Update CV and LED state according to the input state and configured probability value.
-    inline void Update(DigitalInput::InputState input_state) {
-        if (input_state == DigitalInput::STATE_UNCHANGED) return;
-        if (input_state == DigitalInput::STATE_RISING) high();
-        if (input_state == DigitalInput::STATE_FALLING) low();
+    // Turn the CV and LED High according to the probability value.
+    inline void On() {
+        if (random(0, MaxRandRange) > prob_) return;
+
+        switch (mode_) {
+            case TRIGGER:
+                high();
+                break;
+            case GATE:
+                low();
+                high();
+            case FLIP:
+                output_.Update(!output_.On());
+                break;
+        }
     }
 
-    // Return the bool representing the on/off state of the output.
+    // Turn off CV and LED.
+    inline void Off() {
+        switch (mode_) {
+            case TRIGGER:
+                low();
+                break;
+        }
+    }
+
     inline bool State() { return output_.On(); }
-
-    // Return the float trigger probability of the output.
-    inline float GetProb() {
-        return float(prob_) / float(MaxRandRange);
-    }
+    inline Mode GetMode() { return mode_; }
+    inline void SetMode(Mode mode) { mode_ = mode; }
+    inline String DisplayMode() { return (mode_ == 0) ? "TRIG" : "FLIP"; }
+    inline float GetProb() { return float(prob_) / float(MaxRandRange); }
+    inline void IncProb() { prob_ = constrain(++prob_, 0, MaxRandRange); }
+    inline void DecProb() { prob_ = constrain(--prob_, 0, MaxRandRange); }
+    inline void SetProb(float probability) { prob_ = constrain(int(float(MaxRandRange) * probability), 0, MaxRandRange); }
 
    private:
     DigitalOutput output_;
     int prob_;
+    Mode mode_;
 
-    inline void setProb(float probability) {
-        prob_ = constrain(int(float(MaxRandRange) * probability), 0, MaxRandRange);
-    }
-
-    inline void high() {
-        if (random(0, MaxRandRange) < prob_) {
-            output_.High();
-        }
-    }
+    inline void high() { output_.High(); }
 
     inline void low() { output_.Low(); }
 };
+
+#endif

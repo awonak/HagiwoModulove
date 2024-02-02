@@ -1,4 +1,5 @@
-#pragma once
+#ifndef SEED_PACKET_H
+#define SEED_PACKET_H
 
 #define SIZE_OF_BUFFER 4
 
@@ -73,3 +74,5 @@ class SeedPacket {
     uint8_t write_index_ = 0;
     uint8_t buffer_length_ = 0;
 };
+
+#endif
