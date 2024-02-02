@@ -35,6 +35,8 @@
 // Graphics identifiers
 #define RIGHT_TRIANGLE 0x10
 #define LEFT_TRIANGLE 0x11
+#define UP_ARROW 0x18
+#define PERCENT 0x25
 
 // Include the Modulove hardware library.
 #include "src/libmodulove/arythmatik.h"
@@ -63,20 +65,28 @@ const int MODE_ADDR = sizeof(uint8_t) + LENGTH_ADDR;
 // Enum constants for current display page.
 enum MenuPage {
     PAGE_MAIN,
-    PAGE_SEED,
     PAGE_MODE,
+    PAGE_PROB,
+    PAGE_SEED,
     PAGE_LAST,
 };
 MenuPage selected_page = PAGE_MAIN;
 
 // Enum constants for user editable parameters.
-enum Parameter {
+enum MainParameter {
     PARAM_NONE,
     PARAM_LENGTH,
     PARAM_SEED,
     PARAM_LAST,
 };
-Parameter selected_param = PARAM_NONE;
+MainParameter selected_param = PARAM_NONE;
+
+enum ProbabilityParameter {
+    PROB_OUTPUT,
+    PROB_PERCENTAGE,
+    PROB_LAST,
+};
+ProbabilityParameter prob_param = PROB_OUTPUT;
 
 // Script state variables.
 uint8_t step_length = 16;  // Length of psudo random trigger sequence (default 16 steps)
@@ -85,6 +95,7 @@ SeedPacket packet;         // SeedPacket contains the buffer of previous seeds
 uint8_t seed_index;        // Indicated the seed digit to edit on Seed page.
 uint16_t temp_seed;        // Temporary seed for editing the current seed.
 Mode mode = TRIGGER;       // Current state for ouput behavior.
+byte selected_out = 0;     // Selected output for changing probability.
 
 // State variables for tracking OLED and editable parameter changes.
 bool page_select = false;
@@ -131,7 +142,6 @@ void loop() {
         for (int i = 0; i < OUTPUT_COUNT; i++) {
             outputs[i].On();
         }
-
         update_display = true;
     }
 
@@ -208,6 +218,7 @@ void HandleShortPress() {
     if (page_select) {
         page_select = false;
     }
+
     // Next param on Main page.
     else if (selected_page == PAGE_MAIN) {
         switch (selected_param) {
@@ -220,6 +231,11 @@ void HandleShortPress() {
             case PARAM_SEED:
                 selected_param = PARAM_NONE;
         }
+    }
+
+    // Toggle between output and probability parameter selection.
+    else if (selected_page == PAGE_PROB) {
+        prob_param = static_cast<ProbabilityParameter>((prob_param + 1) % PROB_LAST);
     }
 
     // Next seed digit on Seed page.
@@ -271,6 +287,8 @@ void UpdateParameter(Encoder::Direction dir) {
         EditSeed(dir);
     } else if (selected_page == PAGE_MODE) {
         UpdateMode(dir);
+    } else if (selected_page == PAGE_PROB) {
+        UpdateProbability(dir);
     }
 }
 
@@ -309,6 +327,27 @@ void UpdateMode(Encoder::Direction dir) {
     for (int i = 0; i < OUTPUT_COUNT; i++) {
         outputs[i].SetMode(mode);
     }
+    update_display = true;
+    state_changed = true;
+}
+
+void UpdateProbability(Encoder::Direction dir) {
+    if (dir == Encoder::DIRECTION_UNCHANGED) return;
+    if (prob_param == PROB_OUTPUT) UpdateOutput(dir);
+    if (prob_param == PROB_PERCENTAGE) UpdatePercentage(dir);
+}
+
+void UpdateOutput(Encoder::Direction dir) {
+    if (dir == Encoder::DIRECTION_INCREMENT && selected_out < OUTPUT_COUNT - 1)
+        selected_out++;
+    if (dir == Encoder::DIRECTION_DECREMENT && selected_out > 0)
+        selected_out--;
+    update_display = true;
+}
+
+void UpdatePercentage(Encoder::Direction dir) {
+    if (dir == Encoder::DIRECTION_INCREMENT) outputs[selected_out].IncProb();
+    if (dir == Encoder::DIRECTION_DECREMENT) outputs[selected_out].DecProb();
     update_display = true;
     state_changed = true;
 }
@@ -367,7 +406,8 @@ void UpdateDisplay() {
         case PAGE_MODE:
             DisplayOutputModePage();
             break;
-        default:
+        case PAGE_PROB:
+            DisplayProbabilityPage();
             break;
     }
 
@@ -494,5 +534,34 @@ void DisplayOutputModePage() {
         int top = 20;
         int yoffset = 12;
         hw.display.drawChar(start, top + (mode * yoffset), RIGHT_TRIANGLE, WHITE, BLACK, 1);
+    }
+}
+
+void DisplayProbabilityPage() {
+    PageTitle("PROBABILITY");
+    // Draw boxes for pattern length.
+    int top = 16;
+    int left = 16;
+    int barWidth = 10;
+    int barHeight = 42;
+    int padding = 8;
+
+    for (int i = 0; i < OUTPUT_COUNT; i++) {
+        // Draw output probability bar.
+        hw.display.drawRect(left, top, barWidth, barHeight, 1);
+
+        // Fill current bar probability.
+        byte probFill = (float(barHeight) * outputs[i].GetProb());
+        byte probTop = top + barHeight - probFill;
+        hw.display.fillRect(left, probTop, barWidth, probFill, 1);
+
+        // Show selected output.
+        if (i == selected_out & !page_select) {
+            (prob_param == PROB_OUTPUT)
+                ? hw.display.drawChar(left + 2, SCREEN_HEIGHT - 6, UP_ARROW, 1, 0, 1)
+                : hw.display.drawChar(left + 2, SCREEN_HEIGHT - 6, PERCENT, 1, 0, 1);
+        }
+
+        left += barWidth + padding;
     }
 }
