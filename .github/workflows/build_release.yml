@@ -1,5 +1,12 @@
 name: Build and release
-on: [push, pull_request]
+on:
+  pull_request:
+  push:
+    branches:
+        - main
+    paths:
+      - A-RYTH-MATIK/**
+      - SyncLFO/**
 
 jobs:
   build_arythmatik:
@@ -34,7 +41,6 @@ jobs:
           arduino-cli lib install "Adafruit GFX Library"
           arduino-cli lib install "Adafruit SSD1306"
           arduino-cli lib install SimpleRotary
-
       - name: Compile sketch and rename output file for release
         working-directory: ./${{ matrix.module}}
         run: |
