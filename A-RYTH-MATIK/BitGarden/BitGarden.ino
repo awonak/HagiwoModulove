@@ -212,9 +212,6 @@ void InitState() {
         state.probability[3] = 48;
         state.probability[4] = 32;
         state.probability[5] = 18;
-
-        // Save state to EEPROM.
-        // EEPROM.put(0, state);
     }
 }
 

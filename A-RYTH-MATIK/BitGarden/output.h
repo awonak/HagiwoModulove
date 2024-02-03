@@ -53,15 +53,15 @@ class ProbablisticOutput {
 
     // Turn the CV and LED High according to the probability value.
     inline void On() {
+        if (mode_ == GATE) low();
+
         if (random(0, MaxRandRange) > prob_) return;
 
         switch (mode_) {
             case TRIGGER:
+            case GATE:
                 high();
                 break;
-            case GATE:
-                low();
-                high();
             case FLIP:
                 output_.Update(!output_.On());
                 break;
