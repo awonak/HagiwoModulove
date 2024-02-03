@@ -57,11 +57,6 @@ ProbablisticOutput outputs[OUTPUT_COUNT];
 const uint8_t MIN_LENGTH = 4;
 const uint8_t MAX_LENGTH = 32;
 
-// EEPROM address references for saving state.
-const int SEED_ADDR = 0;
-const int LENGTH_ADDR = sizeof(uint16_t) + SEED_ADDR;
-const int MODE_ADDR = sizeof(uint8_t) + LENGTH_ADDR;
-
 // Enum constants for current display page.
 enum MenuPage {
     PAGE_MAIN,
@@ -88,14 +83,30 @@ enum ProbabilityParameter {
 };
 ProbabilityParameter prob_param = PROB_OUTPUT;
 
-// Script state variables.
-uint8_t step_length = 16;  // Length of psudo random trigger sequence (default 16 steps)
-uint8_t step_count = 0;    // Count of trigger steps since reset
-SeedPacket packet;         // SeedPacket contains the buffer of previous seeds
-uint8_t seed_index;        // Indicated the seed digit to edit on Seed page.
-uint16_t temp_seed;        // Temporary seed for editing the current seed.
-Mode mode = TRIGGER;       // Current state for ouput behavior.
-byte selected_out = 0;     // Selected output for changing probability.
+// Script helper variables.
+uint8_t step_count = 0;  // Count of trigger steps since reset
+SeedPacket packet;       // SeedPacket contains the buffer of previous seeds
+uint8_t seed_index;      // Indicated the seed digit to edit on Seed page.
+uint16_t temp_seed;      // Temporary seed for editing the current seed.
+Mode mode = TRIGGER;     // Current state for ouput behavior.
+byte selected_out = 0;   // Selected output for changing probability.
+
+// Script state & storage variables.
+// Expected version string for this firmware.
+const char SCRIPT_NAME[] = "BIT GARDEN";
+const uint8_t SCRIPT_VER = 2;
+
+struct State {
+    // Version check.
+    char script[sizeof(SCRIPT_NAME)];
+    uint8_t version;
+    // State variables.
+    uint8_t step_length;
+    uint16_t seed;
+    Mode mode;
+    uint16_t probability[OUTPUT_COUNT];
+};
+State state;
 
 // State variables for tracking OLED and editable parameter changes.
 bool page_select = false;
@@ -111,16 +122,16 @@ void setup() {
     // Initialize the A-RYTH-MATIK peripherials.
     hw.Init();
 
-    // Initialize each of the outputs with it's GPIO pins and probability.
-    outputs[0].Init(hw.outputs[0], 0.96);
-    outputs[1].Init(hw.outputs[1], 0.82);
-    outputs[2].Init(hw.outputs[2], 0.64);
-    outputs[3].Init(hw.outputs[3], 0.48);
-    outputs[4].Init(hw.outputs[4], 0.32);
-    outputs[5].Init(hw.outputs[5], 0.18);
-
-    // Initial random seed and step length from EEPROM or default values.
+    // Initial state variables from EEPROM or default values.
     InitState();
+
+    // Update seed packet with the initialized seed.
+    packet.SetSeed(state.seed);
+
+    // Initialize the outputs & probabilities from InitState.
+    for (int i; i < OUTPUT_COUNT; i++) {
+        outputs[i].Init(hw.outputs[i], float(state.probability[i])/100.0f);
+    }
 }
 
 void loop() {
@@ -136,7 +147,7 @@ void loop() {
     // trigger that output.
     if (hw.clk.State() == DigitalInput::STATE_RISING) {
         // When step count wraps, reset step count and reseed.
-        step_count = ++step_count % step_length;
+        step_count = ++step_count % state.step_length;
         if (step_count == 0) packet.Reseed();
 
         for (int i = 0; i < OUTPUT_COUNT; i++) {
@@ -176,33 +187,52 @@ void loop() {
 
 // Initialize random seed and step length from EEPROM or default values.
 void InitState() {
-    // Read previously stored seed from EEPROM memory. If it is empty, generate a new random seed.
-    uint16_t _seed;
-    EEPROM.get(SEED_ADDR, _seed);
-    if (_seed != 0xFFFF) {
-        packet.SetSeed(_seed);
-    } else {
-        packet.NewRandomSeed();
+    // Read previously put Storage struct from EEPROM memory. If it doesn't
+    EEPROM.get(0, state);
+
+    // Check if the data in memory matches expected values.
+    if ((strcmp(state.script, SCRIPT_NAME) != 0) || (state.version != SCRIPT_VER)) {
+        // Set script version identifier values.
+        strcpy(state.script, SCRIPT_NAME);
+        state.version = SCRIPT_VER;
+
+        // Default step length.
+        state.step_length = 16;
+
+        // Use a new arbitrary random seed for state.
+        state.seed = 0x8f26;
+
+        // Default mode.
+        state.mode = Mode::TRIGGER;
+
+        // Provide a even distribution of default probabilities.
+        state.probability[0] = 92;
+        state.probability[1] = 86;
+        state.probability[2] = 64;
+        state.probability[3] = 48;
+        state.probability[4] = 32;
+        state.probability[5] = 18;
+
+        // Save state to EEPROM.
+        // EEPROM.put(0, state);
     }
-    // Read previously stored step_length from EEPROM memory. Update step_length if the value is non-zero.
-    uint16_t _step_length;
-    EEPROM.get(LENGTH_ADDR, _step_length);
-    if (_step_length != 0 && _step_length != 0xFF) {
-        SetLength(_step_length);
-    }
-    // Read previously stored output mode into state variable.
-    uint8_t _mode;
-    EEPROM.get(MODE_ADDR, _mode);
-    mode = static_cast<Mode>(_mode);
 }
 
 // Save state to EEPROM if state has changed.
 void SaveChanges() {
     if (!state_changed) return;
     state_changed = false;
-    EEPROM.put(LENGTH_ADDR, step_length);
-    EEPROM.put(SEED_ADDR, packet.GetSeed());
-    EEPROM.put(MODE_ADDR, mode);
+    state.seed = packet.GetSeed();
+    uint16_t _prob[OUTPUT_COUNT] = {
+        outputs[0].GetProbInt(),
+        outputs[1].GetProbInt(),
+        outputs[2].GetProbInt(),
+        outputs[3].GetProbInt(),
+        outputs[4].GetProbInt(),
+        outputs[5].GetProbInt(),
+    };
+    memccpy(state.probability, _prob, sizeof(_prob), sizeof(_prob));
+    EEPROM.put(0, state);
 }
 
 // Reset the pattern sequence and reseed the psudo random deterministic pattern.
@@ -243,15 +273,16 @@ void HandleShortPress() {
         seed_index = --seed_index % 4;
     }
 
-    // Short press on Output Mode page will return to the Main page.
+    // Short press on Output Mode page will return to the page selection mode.
     else if (selected_page == PAGE_MODE) {
-        selected_page = PAGE_MAIN;
+        page_select = true;
     }
     SaveChanges();
     update_display = true;
 }
 
-// Long press handler.
+// Long press handler.will toggle between page select mode and parameter edit
+// mode for the current page.
 void HandleLongPress() {
     // Toggle between menu page select mode.
     if (!page_select) {
@@ -306,26 +337,26 @@ void UpdateSeed(Encoder::Direction dir) {
 
 // Adjust the step length for the given input direction (1=increment, 2=decrement).
 void UpdateLength(Encoder::Direction dir) {
-    if (dir == Encoder::DIRECTION_INCREMENT && step_length <= MAX_LENGTH) {
-        SetLength(++step_length);
-    } else if (dir == Encoder::DIRECTION_DECREMENT && step_length >= MIN_LENGTH) {
-        SetLength(--step_length);
+    if (dir == Encoder::DIRECTION_INCREMENT && state.step_length <= MAX_LENGTH) {
+        SetLength(++state.step_length);
+    } else if (dir == Encoder::DIRECTION_DECREMENT && state.step_length >= MIN_LENGTH) {
+        SetLength(--state.step_length);
     }
 }
 
-// Change the current output type selection.
+// Change the current output mode selection.
 void UpdateMode(Encoder::Direction dir) {
     if (dir == Encoder::DIRECTION_UNCHANGED) return;
 
-    if (dir == Encoder::DIRECTION_INCREMENT && mode < MODE_LAST - 1) {
-        mode = static_cast<Mode>(mode + 1);
+    if (dir == Encoder::DIRECTION_INCREMENT && state.mode < MODE_LAST - 1) {
+        state.mode = static_cast<Mode>(state.mode + 1);
 
-    } else if (dir == Encoder::DIRECTION_DECREMENT && mode > 0) {
-        mode = static_cast<Mode>(mode - 1);
+    } else if (dir == Encoder::DIRECTION_DECREMENT && state.mode > 0) {
+        state.mode = static_cast<Mode>(state.mode - 1);
     }
     // Update the mode for all outputs.
     for (int i = 0; i < OUTPUT_COUNT; i++) {
-        outputs[i].SetMode(mode);
+        outputs[i].SetMode(state.mode);
     }
     update_display = true;
     state_changed = true;
@@ -378,7 +409,7 @@ void EditSeed(Encoder::Direction dir) {
 
 // Set the pattern length..
 void SetLength(uint8_t _step_length) {
-    step_length = constrain(_step_length, MIN_LENGTH, MAX_LENGTH);
+    state.step_length = constrain(_step_length, MIN_LENGTH, MAX_LENGTH);
     update_display = true;
     state_changed = true;
 }
@@ -432,14 +463,14 @@ void DisplayMainPage() {
     int padding = 2;
     int wrap = 8;
 
-    for (int i = 1; i <= step_length; i++) {
+    for (int i = 1; i <= state.step_length; i++) {
         // Determine how much top padding to use.
         int _top = top;
-        if (step_length <= 8)
+        if (state.step_length <= 8)
             _top += 8;
-        else if (step_length <= 16)
+        else if (state.step_length <= 16)
             _top += 6;
-        else if (step_length <= 24)
+        else if (state.step_length <= 24)
             _top += 4;
         // Draw box, fill current step.
         (i == step_count + 1)
@@ -450,7 +481,7 @@ void DisplayMainPage() {
         left += boxSize + padding + 1;
 
         // Show edit icon for length if it's selected.
-        if (selected_param == PARAM_LENGTH && i == step_length) {
+        if (selected_param == PARAM_LENGTH && i == state.step_length) {
             hw.display.drawChar(left, _top, LEFT_TRIANGLE, 1, 0, 1);
         }
 
@@ -466,7 +497,7 @@ void DisplayMainPage() {
     String str_step = (step_count < 9)
                           ? " " + String(step_count + 1)
                           : String(step_count + 1);
-    hw.display.println("Step:" + str_step + "/" + String(step_length));
+    hw.display.println("Step:" + str_step + "/" + String(state.step_length));
 
     // Draw a die and the hex seed value on the bottom right.
     hw.display.drawRoundRect(82, 55, 9, 9, 2, 1);
@@ -508,15 +539,15 @@ void DisplaySeedPage() {
 void DisplayOutputModePage() {
     PageTitle("OUTPUT MODE");
     // Draw output modes
-    (mode == TRIGGER)
+    (state.mode == TRIGGER)
         ? hw.display.fillRect(12, 20, 8, 8, 1)
         : hw.display.drawRect(12, 20, 8, 8, 1);
 
-    (mode == GATE)
+    (state.mode == GATE)
         ? hw.display.fillRect(12, 32, 8, 8, 1)
         : hw.display.drawRect(12, 32, 8, 8, 1);
 
-    (mode == FLIP)
+    (state.mode == FLIP)
         ? hw.display.fillRect(12, 44, 8, 8, 1)
         : hw.display.drawRect(12, 44, 8, 8, 1);
 
@@ -533,7 +564,8 @@ void DisplayOutputModePage() {
         int start = 4;
         int top = 20;
         int yoffset = 12;
-        hw.display.drawChar(start, top + (mode * yoffset), RIGHT_TRIANGLE, WHITE, BLACK, 1);
+        int _mode = static_cast<int>(state.mode);
+        hw.display.drawChar(start, top + (_mode * yoffset), RIGHT_TRIANGLE, WHITE, BLACK, 1);
     }
 }
 

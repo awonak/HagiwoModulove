@@ -17,7 +17,6 @@ enum Mode {
     MODE_LAST,
 };
 
-const int MaxRandRange = 100;
 
 /**
   Class for handling probablistic triggers.
@@ -26,6 +25,8 @@ class ProbablisticOutput {
    public:
     ProbablisticOutput() {}
     ~ProbablisticOutput() {}
+
+    const static int MaxRandRange = 100;
 
     /**
     Initializes the probablistic cv output object with a given digital cv and
@@ -79,15 +80,19 @@ class ProbablisticOutput {
     inline bool State() { return output_.On(); }
     inline Mode GetMode() { return mode_; }
     inline void SetMode(Mode mode) { mode_ = mode; }
-    inline String DisplayMode() { return (mode_ == 0) ? "TRIG" : "FLIP"; }
-    inline float GetProb() { return float(prob_) / float(MaxRandRange); }
-    inline void IncProb() { prob_ = constrain(++prob_, 0, MaxRandRange); }
-    inline void DecProb() { prob_ = constrain(--prob_, 0, MaxRandRange); }
-    inline void SetProb(float probability) { prob_ = constrain(int(float(MaxRandRange) * probability), 0, MaxRandRange); }
+    inline float GetProb() { return fprob_; }
+    inline int GetProbInt() { return prob_; }
+    inline void IncProb() { SetProb(float(constrain(++prob_, 0, MaxRandRange)) / float(MaxRandRange)); }
+    inline void DecProb() { SetProb(float(constrain(--prob_, 0, MaxRandRange)) / float(MaxRandRange)); }
+    inline void SetProb(float probability) {
+        fprob_ = probability; 
+        prob_ = constrain(int(float(MaxRandRange) * probability), 0, MaxRandRange); 
+    }
 
    private:
     DigitalOutput output_;
     int prob_;
+    float fprob_;
     Mode mode_;
 
     inline void high() { output_.High(); }
