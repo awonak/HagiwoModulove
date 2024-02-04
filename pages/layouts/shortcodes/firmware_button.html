@@ -2,7 +2,7 @@
 <div class="flash-firmware">
   <button
     arduino-uploader
-    hex-href='/HagiwoModulove/releases/{{ .Get "hex" | safeURL }}.nano.hex'
+    hex-href='https://github.com/awonak/HagiwoModulove/releases/download/v0.7.5/{{ .Get "hex" | safeURL }}.lgt8f328p.hex'
     board="nano"
     [optional]verify
     [optional]port-filters='[{"usbProductId":46388,"usbVendorId":1241}]'
@@ -13,7 +13,7 @@
   </button>
   <button
     arduino-uploader
-    hex-href='/HagiwoModulove/releases/{{ .Get "hex" | safeURL }}.nanoOldBootloader.hex'
+    hex-href='https://github.com/awonak/HagiwoModulove/releases/download/v0.7.5/{{ .Get "hex" | safeURL }}.nanoOldBootloader.hex'
     board="nanoOldBootloader"
     [optional]verify
     [optional]port-filters='[{"usbProductId":46388,"usbVendorId":1241}]'
@@ -24,7 +24,7 @@
   </button>
   <button
     arduino-uploader
-    hex-href='/HagiwoModulove/releases/{{ .Get "hex" | safeURL }}.lgt8f328p.hex'
+    hex-href='https://github.com/awonak/HagiwoModulove/releases/download/v0.7.5/{{ .Get "hex" | safeURL }}.lgt8f328p.hex'
     board="lgt8f328p"
     [optional]verify
     [optional]port-filters='[{"usbProductId":46388,"usbVendorId":1241}]'
