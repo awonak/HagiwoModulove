@@ -229,7 +229,7 @@ void SaveChanges() {
         outputs[4].GetProbInt(),
         outputs[5].GetProbInt(),
     };
-    memccpy(state.probability, _prob, sizeof(_prob), sizeof(_prob));
+    memcpy(state.probability, _prob, sizeof(_prob));
     EEPROM.put(0, state);
 }
 
