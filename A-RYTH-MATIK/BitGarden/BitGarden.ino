@@ -84,12 +84,12 @@ enum ProbabilityParameter {
 ProbabilityParameter prob_param = PROB_OUTPUT;
 
 // Script helper variables.
-uint8_t step_count = 0;  // Count of trigger steps since reset
-SeedPacket packet;       // SeedPacket contains the buffer of previous seeds
-uint8_t seed_index;      // Indicated the seed digit to edit on Seed page.
-uint16_t temp_seed;      // Temporary seed for editing the current seed.
-Mode mode = TRIGGER;     // Current state for ouput behavior.
-byte selected_out = 0;   // Selected output for changing probability.
+uint8_t step_count;   // Count of trigger steps since reset
+SeedPacket packet;    // SeedPacket contains the buffer of previous seeds
+uint8_t seed_index;   // Indicated the seed digit to edit on Seed page.
+uint16_t temp_seed;   // Temporary seed for editing the current seed.
+Mode mode = TRIGGER;  // Current state for ouput behavior.
+byte selected_out;    // Selected output for changing probability.
 
 // Script state & storage variables.
 // Expected version string for this firmware.
@@ -130,7 +130,7 @@ void setup() {
 
     // Initialize the outputs & probabilities from InitState.
     for (int i; i < OUTPUT_COUNT; i++) {
-        outputs[i].Init(hw.outputs[i], float(state.probability[i])/100.0f);
+        outputs[i].Init(hw.outputs[i], float(state.probability[i]) / 100.0f);
     }
 }
 
@@ -185,9 +185,10 @@ void loop() {
     UpdateDisplay();
 }
 
-// Initialize random seed and step length from EEPROM or default values.
+// Initialize script state from EEPROM or default values.
 void InitState() {
-    // Read previously put Storage struct from EEPROM memory. If it doesn't
+    // Read previously put state from EEPROM memory. If it doesn't exist or
+    // match version, then populate the State struct with default values.
     EEPROM.get(0, state);
 
     // Check if the data in memory matches expected values.
@@ -278,7 +279,7 @@ void HandleShortPress() {
     update_display = true;
 }
 
-// Long press handler.will toggle between page select mode and parameter edit
+// Long press handler will toggle between page select mode and parameter edit
 // mode for the current page.
 void HandleLongPress() {
     // Toggle between menu page select mode.
