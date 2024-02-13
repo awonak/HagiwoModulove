@@ -8,17 +8,26 @@ layout: "single"
 Deterministic psudo random gate processor. [[source](https://github.com/awonak/HagiwoModulove/tree/main/A-RYTH-MATIK/BitGarden)]
 
 Each output will mirror CLK according to a decreasing deterministic probability
-set by the seed value. RST input will reset the psudo random sequence. Use the
-encoder to randomize the seed or adjust the pattern length. The user
-configurable parameters of seed and step length will be saved to EEPROM and
-will be recalled the next time you power on the module.
+set by the seed value. RST input will reset the psudo random sequence. Short
+press of the encoder will select a diffent editable parameter on the current
+page. Long press the encoder to select a different page. The user configurable
+parameters will be saved to EEPROM and will be recalled the next time you power
+on the module.
+
+Main page - adjust the pattern length or randomize the seed.
+
+Probability page - configure the probability for each output
+
+Output Mode page - set the output behavior (trigger, gate, flip)
+
+Seed page - manually enter a seed value.
 
 {{< youtube PlufCV3CNw8 >}}
 
 ```yaml
 Encoder:
-     short press: Toggle between editing the step length and selecting a seed.
-     long press: Enter seed edit mode to manually provide a seed value.
+     short press: Toggle between editable parameters on the current page.
+     long press: Enter page select mode.
 
 CLK: Provide a gate or trigger for each output to repeat with decreasing
      probability in each output.
@@ -56,7 +65,6 @@ CV1-6: Gate output with decreasing probability.
 ```
 
 {{< encoder_firmware_button hex="A-RYTH-MATIK_Uncertainty" buttonText="Flash Uncertainty Firmware">}}
-
 
 ## Time Bandit
 
