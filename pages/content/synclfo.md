@@ -129,7 +129,6 @@ Input Trigger/Gate Modes:
 
 {{< firmware_button hex="SyncLFO_PerlinNoise" buttonText="Flash Perlin Noise Firmware" >}}
 
-
 ## Polyrhythm
 
 Generate polyrhythms based on 16 step counter knobs. [[source](https://github.com/awonak/HagiwoModulove/blob/main/SyncLFO/Polyrhythm/Polyrhythm.ino)]
@@ -161,3 +160,25 @@ CV_OUT: CV Output for polyrhythm triggers
 ```
 
 {{< firmware_button hex="SyncLFO_Polyrhythm" buttonText="Flash Polyrhythm Firmware" >}}
+
+## Trigger Delay
+
+Trigger delay with gate and slope settings. [[source](https://github.com/awonak/HagiwoModulove/blob/main/SyncLFO/TriggerDelay/TriggerDelay.ino)]
+
+Repeat the incoming trigger with a delay up to 2 seconds set by P1 for a
+duration up to 2 seconds set by P2. Additionally, the output rising edge
+can be slewed using P3 and the falling edge can be slewed using P4.
+
+{{< youtube crwqMRxqejU >}}
+
+```yaml
+Knob 1: Trigger delay
+Knob 2: Gate duration
+Knob 3: Attack slew
+Knob 4: Release slew
+
+TRIG_IN: Start or restart the trigger delay
+CV_OUT: Delayed CV output
+```
+
+{{< firmware_button hex="SyncLFO_TriggerDelay" buttonText="Flash Trigger Delay Firmware" >}}

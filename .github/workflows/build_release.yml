@@ -58,7 +58,7 @@ jobs:
     strategy:
         matrix:
           module: ["SyncLFO"]
-          firmware: ["ADSR", "Baby4", "GenerativeSequencer", "MultiModeEnv", "Polyrhythm", "PerlinNoise"]
+          firmware: ["ADSR", "Baby4", "GenerativeSequencer", "MultiModeEnv", "Polyrhythm", "PerlinNoise", "TriggerDelay"]
           board: ["arduino:avr:nano", "arduino:avr:nano:cpu=atmega328old", "lgt8fx:avr:328"]
           include:
             - board: arduino:avr:nano
