@@ -5,7 +5,13 @@
  * @version 0.1
  * @date 2024-04-08
  *
- * @copyright Copyright (c) 2023
+ * @copyright Copyright (c) 2024
+ * 
+ * Trigger delay with gate and slope settings.
+ * 
+ * Repeat the incoming trigger with a delay up to 2 seconds set by P1 for a
+ * duration up to 2 seconds set by P2. Additionally, the output rising edge
+ * can be slewed using P3 and the falling edge can be slewed using P4.
  *
  */
 
@@ -87,7 +93,7 @@ void loop() {
     din = new_din;
 
 #ifdef JMNW
-    // LED1 should echo cv input.
+    // Echo digital input on LED 1.
     digitalWrite(LED1, din);
 
     // Read current button state.
