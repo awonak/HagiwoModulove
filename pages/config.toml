@@ -36,6 +36,8 @@ paginate = 5
 
   # set a custom favicon (default is a `themeColor` square)
   # favicon = "favicon.ico"
+  favicon = "Logo_Outline_White.svg"
+  svg = true
 
   # Provide a string as a prefix for the last update date. By default, it looks like this: 2020-xx-xx [Updated: 2020-xx-xx] :: Author
   # updatedDatePrefix = "Updated"
@@ -76,6 +78,7 @@ paginate = 5
     [languages.en.params.logo]
       logoText = "Hagiwo Modulove // Alt Firmware"
       logoHomeLink = "/HagiwoModulove"
+      logo = "Wordmark_Black.svg"
 
     [languages.en.menu]
       [[languages.en.menu.main]]

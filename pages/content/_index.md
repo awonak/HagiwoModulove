@@ -3,6 +3,8 @@ title: ""
 date: 2023-08-18T08:12:59-05:00
 ---
 
+{{< image src="/HagiwoModulove/Wordmark_White.png" alt="Hello Friend" position="center" >}}
+
 ## Alt Firmware for Modulove modules
 
 This page is a collection of the alternate firmware for the [Modulove.io](https://modulove.io/) hardware remixes of [Hagiwo's](https://www.youtube.com/@HAGIWO) SyncLFO and A-RYTH-MATIK modules with firmware written by [Adam Wonak](https://github.com/awonak). The firmware can be flashed to your module's Arduino Nano directly from the website. Support for LGT8F328P boards is coming soon.
