@@ -22,19 +22,18 @@
 #define CV_OUT 10      // CV Output for current step
 
 #ifdef JMNW
-#define B1 A2  // Button 1 (bodged from original D13)
-#define B2 12  // Button 2
-#define LED1 11  // Slider LED 1
-#define LED2 10  // Slider LED 2
-byte button1_state;
-byte old_button1_state;
-byte button2_state;
+    #define B1 A2  // Button 1 (bodged from original D13)
+    #define B2 12  // Button 2
+    #define LED1 11  // Slider LED 1
+    #define LED2 10  // Slider LED 2
+    byte button1_state;
+    byte button2_state;
+    unsigned long _last_press;
+    const int DEBOUNCE_MS = 10;
 #endif
 
-// Global state variables.
-uint8_t din = 0;  // Digital input read value.
-uint8_t old_din = 0;
-float R;  // R holds the linear to exponential conversion factor value.
+// The max trigger delay / gate duration.
+const int MAX_DELAY_MS = 2000;
 
 
 enum Stage {
@@ -47,6 +46,7 @@ enum Stage {
 Stage stage = WAIT;
 
 // Script state.
+uint8_t din = 0;  // Digital input read value.
 unsigned long trig_start;
 int trig_delay;
 int trig_duration;
@@ -75,39 +75,46 @@ void setup() {
     // Register setting for high frequency PWM.
     TCCR1A = 0b00100001;
     TCCR1B = 0b00100001;
-
-    // Calculate the linear to exponential R value (only needs to be done once at setup).
-    R = (1023 * log10(2)) / (log10(255));
 }
 
 void loop() {
     bool trigger_start;
+    int new_din;
     
     // Read all inputs.
-    old_din = din;
-    din = digitalRead(DIGITAL_IN);
-    trigger_start = old_din == 0 && din == 1;
+    new_din = digitalRead(DIGITAL_IN);
+    trigger_start = new_din == 1 && din == 0;
+    din = new_din;
 
 #ifdef JMNW
-    old_button1_state = button1_state;
-    button1_state = digitalRead(B1);
-    // Check for button 1 press.
-    // TODO: Handle debounce
-    trigger_start |= old_button1_state == 0 && button1_state == 1;;
+    // Read current button state.
+    bool new_button1_state = digitalRead(B1);
+
+    // State check with debounce.
+    bool _debounced = (millis() - _last_press) > DEBOUNCE_MS;
+    bool _pressed = button1_state == 1 && new_button1_state == 0 && _debounced;
+    bool _released = button1_state == 0 && new_button1_state == 1 && _debounced;
+
+    // If the button has been pressed, set trigger_start to True if it isn't already.
+    trigger_start |= _pressed;
+
+    // Update variables for next loop
+    button1_state = new_button1_state;
+    _last_press = (_pressed || _released) ? millis(): _last_press;
 #endif
 
     // Detect if a new trigger has been received.
     if (trigger_start) {
         // Read the trigger delay and duration.
-        trig_delay = map(analogRead(P1), 0, 1023, 0, 2000);
-        trig_duration = map(analogRead(P2), 0, 1023, 20, 2000);
+        trig_delay = map(analogRead(P1), 0, 1023, 0, MAX_DELAY_MS);
+        trig_duration = map(analogRead(P2), 0, 1023, 20, MAX_DELAY_MS);
         trig_start = millis();
 
         // Calculate the exponential slope value.
         attack_count = analogRead(P3);
         release_count = analogRead(P4);
-        attack_slope = (attack_count * log10(2)) / log10(255);
-        release_slope = (release_count * log10(2)) / log10(255);
+        attack_slope = slope(attack_count);
+        release_slope = slope(release_count);
 
         stage = DELAY;
         output = 0;
@@ -153,5 +160,7 @@ void loop() {
     analogWrite(CV_OUT, output);
 }
 
-// Convert a linear value to its exponential compliment for led visual correction.
-int brightness(int v) { return (v > 32) ? pow(2, (v / R)) : 0; }
+// Calculate the linear to exponential slope value.
+int slope (int input) {
+    return (input * log10(2)) / (log10(255));
+}
