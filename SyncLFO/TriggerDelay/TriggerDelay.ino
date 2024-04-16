@@ -87,6 +87,9 @@ void loop() {
     din = new_din;
 
 #ifdef JMNW
+    // LED1 should echo cv input.
+    digitalWrite(LED1, din);
+
     // Read current button state.
     bool new_button1_state = digitalRead(B1);
 
