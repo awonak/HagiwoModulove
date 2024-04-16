@@ -18,6 +18,15 @@ Modulove
 
 ## Firmware Development
 
+### Clone the repo
+
+This repository uses git submodules so there are extra steps to pull down all of the files you'll need.
+
+```shell
+$ git clone https://github.com/awonak/HagiwoModulove.git
+$ git submodule update --init --recursive
+```
+
 ### Configure Visual Studio Code for your IDE
 
 Required Extensions:
