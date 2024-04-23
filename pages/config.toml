@@ -35,9 +35,9 @@ paginate = 5
   showLastUpdated = false
 
   # set a custom favicon (default is a `themeColor` square)
-  # favicon = "favicon.ico"
-  favicon = "Logo_Outline_White.svg"
-  svg = true
+  favicon = "favicon.ico"
+  # favicon = "square_outline.svg"
+  # svg = true
 
   # Provide a string as a prefix for the last update date. By default, it looks like this: 2020-xx-xx [Updated: 2020-xx-xx] :: Author
   # updatedDatePrefix = "Updated"
