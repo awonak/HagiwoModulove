@@ -16,7 +16,7 @@
  */
 
 // ALTERNATE HARDWARE CONFIGURATION
-#define JMNW
+#define SYNCHRONIZER
 
 // GPIO Pin mapping.
 #define P1 A0  // Trigger Delay
@@ -27,7 +27,7 @@
 #define DIGITAL_IN 3   // Trigger Input to advance step
 #define CV_OUT 10      // CV Output for current step
 
-#ifdef JMNW
+#ifdef SYNCHRONIZER
     #define B1 A2  // Button 1 (bodged from original D13)
     #define B2 12  // Button 2
     #define LED1 11  // Slider LED 1
@@ -52,7 +52,7 @@ enum Stage {
 Stage stage = WAIT;
 
 // Script state.
-uint8_t din = 0;  // Digital input read value.
+uint8_t old_din = 0;  // Digital input read value.
 unsigned long trig_start;
 int trig_delay;
 int trig_duration;
@@ -71,7 +71,7 @@ void setup() {
     pinMode(P3, INPUT);
     pinMode(P4, INPUT);
 
-#ifdef JMNW
+#ifdef SYNCHRONIZER
     pinMode(B1, INPUT_PULLUP);
     pinMode(B2, INPUT_PULLUP);
     pinMode(LED1, OUTPUT);
@@ -89,12 +89,12 @@ void loop() {
     
     // Read all inputs.
     new_din = digitalRead(DIGITAL_IN);
-    trigger_start = new_din == 1 && din == 0;
-    din = new_din;
+    trigger_start = new_din == 1 && old_din == 0;
+    old_din = new_din;
 
-#ifdef JMNW
+#ifdef SYNCHRONIZER
     // Echo digital input on LED 1.
-    digitalWrite(LED1, din);
+    digitalWrite(LED1, old_din);
 
     // Read current button state.
     bool new_button1_state = digitalRead(B1);
