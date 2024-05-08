@@ -69,6 +69,16 @@ To make sure the Arduino extension does not overwrite these changes, update `.vs
     "intelliSenseGen": "disable"
 ```
 
+### Additional User Settings for Arduino extension configurations.
+
+Additional board config for an LGT8F328P Arduino Nano clone
+
+```json
+"arduino.additionalUrls": [
+    "https://raw.githubusercontent.com/dbuezas/lgt8fx/master/package_lgt8fx_index.json",
+],
+```
+
 You're now ready to start hacking!
 
 ### Third-party Arduino Libraries
