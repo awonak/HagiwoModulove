@@ -1,17 +1,18 @@
 /**
  * @file BurstGenerator.ino
  * @author Adam Wonak (https://github.com/awonak/)
- * @brief 
+ * @brief
  * @version 0.1
  * @date 2024-04-08
  *
  * @copyright Copyright (c) 2024
- * 
+ *
  * Burst generator with rate, duration and slope settings.
- * 
+ *
  * Repeat the incoming trigger for a given rate and duration.
- * 
- * Heavily inspired by Luther's https://github.com/PierreIsCoding/sdiy/tree/main/Spark
+ *
+ * Heavily inspired by Luther's
+ * https://github.com/PierreIsCoding/sdiy/tree/main/Spark
  *
  */
 
@@ -20,39 +21,49 @@
 
 // GPIO Pin mapping.
 #define P1 A0  // Burst Rate
-#define P2 A1  // Burst Duration
-#define P3 A3  // Slope (fade in, flat, fade out)
-#define P4 A5  // Envelope speed
+#define P2 A1  // Burst Count
+#define P3 A3  // Full Burst Slope (fade in, flat, fade out)
+#define P4 A5  // Individual Burst Slope (fade in, flat, fade out)
 
-#define DIGITAL_IN 3   // Trigger Input to advance step
-#define CV_OUT 10      // CV Output for current step
+#define DIGITAL_IN 3  // Trigger Input to advance step
+#define CV_OUT 10     // CV Output for current step
 
 #ifdef SYNCHRONIZER
-    #define B1 A2  // Trigger burst
-    #define B2 12  // Retrig / Loop
-    #define LED1 11  // Slider LED 1
-    #define LED2 10  // Slider LED 2
-    byte button1_state;
-    byte button2_state;
-    unsigned long _last_press;
-    const int DEBOUNCE_MS = 10;
+#define B1 A2    // Trigger burst
+#define B2 12    // Retrig / Loop
+#define LED1 11  // Slider LED 1
+#define LED2 10  // Slider LED 2
+byte button1_state;
+byte button2_state;
+unsigned long _last_press;
+const int DEBOUNCE_MS = 10;
 #endif
 
-// The max burst gate duration.
-const int MAX_BURST_DURATION = 2000;
+// The max burst gate count.
+const int MAX_BURST_COUNT = 16;
 
-// The duration of each burst spark in milliseconds. 
-const int MAX_BURST_RATE = 1024;
+// The duration of each burst spark in milliseconds.
+const int MIN_BURST_RATE = 10;
+const int MAX_BURST_RATE = 512;
 
 // Script state.
-uint8_t old_din = 0;  // Digital input read value.
+int counter = 0;
+byte individual_cv = 0;
+byte full_cv = 0;
+float individual_progress = 0;
+float full_progress = 0;
+unsigned long burst_start = 0;
+unsigned long last_burst = 0;
+int burst_rate;
+int burst_count;
 
 enum SlopeMode {
     FADE_IN,
     FLAT,
     FADE_OUT,
 };
-SlopeMode slope_mode = FLAT;
+SlopeMode full_slope_mode = FLAT;
+SlopeMode individual_slope_mode = FLAT;
 
 void setup() {
     pinMode(DIGITAL_IN, INPUT);
@@ -75,19 +86,80 @@ void setup() {
 }
 
 void loop() {
-    // Detect if a new trigger has been received. If so, read inputs for burst settings.
-    if (beginBurstCheck()) {
-        // Kick off burst generator with the current knob parameters.
-        int burst_rate = map(analogRead(P1), 0, 1023, 0, MAX_BURST_RATE);
-        int burst_duration = map(analogRead(P2), 0, 1023, 20, MAX_BURST_DURATION);
-        int slope_mode = readSlopeMode(P3);
-        doBurst(burst_rate, burst_duration, slope_mode);
+    // Detect if a new trigger has been received. If so, read inputs for burst
+    // settings.
+    if (beginBurst()) {
+        // Initialize burst state variables.
+        burst_start = millis();
+        counter = 0;
+
+        // Read the current knob parameters.
+        burst_rate =
+            map(analogRead(P1), 0, 1024, MIN_BURST_RATE, MAX_BURST_RATE);
+        burst_count = map(analogRead(P2), 0, 1023, 1, MAX_BURST_COUNT);
+        full_slope_mode = readSlopeMode(P3);
+        individual_slope_mode = readSlopeMode(P4);
+    }
+
+    // Update burst cv if withing a bursting state.
+    if (millis() < burst_start + ((2 * burst_rate) * burst_count)) {
+        // Increment counter for current phase of duty cycle.
+        if (millis() > burst_start + (counter * burst_rate)) {
+            counter++;
+            if (counter % 2) {
+                last_burst = millis();
+                // Calculate the progress percentage from current time to
+                // burst_duration.
+                full_progress = float(millis() - burst_start) /
+                                float(((2 * burst_rate) * burst_count));
+            }
+        }
+
+        // Calculate progress of current burst slope.
+        if (millis() < (last_burst + (2 * burst_rate))) {
+            individual_progress =
+                float(millis() - last_burst) / float(2 * burst_rate);
+        }
+        switch (individual_slope_mode) {
+            case FLAT:
+                individual_cv = 255;
+                break;
+            case FADE_IN:
+                individual_cv = individual_progress * 255.f;
+                break;
+            case FADE_OUT:
+                individual_cv = (255.f - (individual_progress * 255.f));
+                break;
+        }
+
+        // Calculate overall burst progress.
+        switch (full_slope_mode) {
+            case FLAT:
+                full_cv = individual_cv;
+                break;
+            case FADE_IN:
+                full_cv = full_progress * individual_cv;
+                break;
+            case FADE_OUT:
+                full_cv = (individual_cv - (full_progress * individual_cv));
+                break;
+        }
+        // Duty cycle check for flat burst shape.
+        if (individual_slope_mode == FLAT) {
+            full_cv = (counter % 2) ? full_cv : 0;
+        }
+
+        analogWrite(CV_OUT, full_cv);
+    }
+    else {
+        analogWrite(CV_OUT, 0);
     }
 }
 
-bool beginBurstCheck() {
+bool beginBurst() {
+    static int old_din;
     bool begin_burst;
-    
+
     // Read all inputs.
     int new_din = digitalRead(DIGITAL_IN);
     begin_burst = new_din == 1 && old_din == 0;
@@ -105,55 +177,16 @@ bool beginBurstCheck() {
     bool _pressed = button1_state == 1 && new_button1_state == 0 && _debounced;
     bool _released = button1_state == 0 && new_button1_state == 1 && _debounced;
 
-    // If the button has been pressed, set trigger_start to True if it isn't already.
+    // If the button has been pressed, set trigger_start to True if it isn't
+    // already.
     begin_burst |= _pressed;
 
     // Update variables for next loop
     button1_state = new_button1_state;
-    _last_press = (_pressed || _released) ? millis(): _last_press;
+    _last_press = (_pressed || _released) ? millis() : _last_press;
 #endif
 
     return begin_burst;
-}
-
-void doBurst(int burst_rate, int burst_duration, int slope_mode) {
-    byte output = 0;
-    int counter = 0;
-	float progress = 0;
-    unsigned long burst_start = millis();
-
-    while (millis() < burst_start + burst_duration) {
-
-        // Increment counter for current phase of duty cycle.
-        if (millis() > burst_start + (counter * burst_rate)) {
-            counter++;
-			// Calculate the progress percentage from current time to burst_duration.
-			progress = float(millis() - burst_start) / float(burst_duration);
-        }
-
-        switch (slope_mode) {
-        case FLAT:
-            output = (counter % 2) ? 255 : 0;
-            break;
-
-        case FADE_IN:
-            // Calculate current step voltage.
-            output = (counter % 2) ? progress * 255.f : 0;
-            break;
-        
-        case FADE_OUT:
-            // Calculate current step voltage.
-            output = (counter % 2) ? (255.f - (progress * 255.f)) : 0;
-            break;
-        
-        default:
-            break;
-        }
-
-        analogWrite(CV_OUT, output);
-    }
-
-    analogWrite(CV_OUT, 0);
 }
 
 SlopeMode readSlopeMode(uint8_t pin) {
