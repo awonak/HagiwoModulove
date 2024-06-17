@@ -46,6 +46,30 @@ CV_OUT: Current step voltage
 
 {{< firmware_button hex="SyncLFO_Baby4" buttonText="Flash Baby4 Firmware" >}}
 
+
+## BurstGenerator
+
+Burst generator with rise and fall shape. [[source](https://github.com/awonak/HagiwoModulove/blob/main/SyncLFO/BurstGenerator/BurstGenerator.ino)]
+
+Trigger input will cause a burst generation with trigger period duration 
+defined by knob 1 and number of burst triggers defined by knob 2. 
+Additionally you can set the burst sequence shape to rise or fall with
+knob 3 and make each trigger rise or fall with knob 4.
+
+{{< youtube J3xaACv5apQ >}}
+
+```yaml
+Knob 1: Burst period duration
+Knob 2: Count of bursts
+Knob 3: Burst sequence rise/flat/fall
+Knob 4: Burst trigger rise/flat/fall
+
+TRIG_IN: Start a new burst sequence
+CV_OUT: Burst sequence cv
+```
+
+{{< firmware_button hex="SyncLFO_BurstGenerator" buttonText="Flash BurstGenerator Firmware" >}}
+
 ## GenerativeSequencer
 
 Generative Sequencer firmware. [[source](https://github.com/awonak/HagiwoModulove/blob/main/SyncLFO/GenerativeSequencer/GenerativeSequencer.ino)]
