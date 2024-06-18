@@ -49,21 +49,30 @@ const int MAX_BURST_RATE = 512;
 // Script state.
 int counter = 0;
 byte individual_cv = 0;
-byte full_cv = 0;
+byte output = 0;
 float individual_progress = 0;
 float full_progress = 0;
 unsigned long burst_start = 0;
 unsigned long last_burst = 0;
 int burst_rate;
 int burst_count;
+int target_cv;
 
-enum SlopeMode {
-    FADE_IN,
-    FLAT,
-    FADE_OUT,
+enum SequenceShape {
+    SEQUENCE_FADE_IN,
+    SEQUENCE_FLAT,
+    SEQUENCE_FADE_OUT,
+    SEQUENCE_TRIANGLE,
+    SEQUENCE_RANDOM,
 };
-SlopeMode full_slope_mode = FLAT;
-SlopeMode individual_slope_mode = FLAT;
+SequenceShape sequence_shape = SEQUENCE_FLAT;
+
+enum TrigShape {
+    TRIG_FADE_IN,
+    TRIG_FLAT,
+    TRIG_FADE_OUT,
+};
+TrigShape trig_shape = TRIG_FLAT;
 
 void setup() {
     pinMode(DIGITAL_IN, INPUT);
@@ -97,8 +106,8 @@ void loop() {
         burst_rate =
             map(analogRead(P1), 0, 1024, MIN_BURST_RATE, MAX_BURST_RATE);
         burst_count = map(analogRead(P2), 0, 1023, 1, MAX_BURST_COUNT);
-        full_slope_mode = readSlopeMode(P3);
-        individual_slope_mode = readSlopeMode(P4);
+        sequence_shape = readSequenceShape(P3);
+        trig_shape = readTrigShape(P4);
     }
 
     // Update burst cv if withing a bursting state.
@@ -112,6 +121,8 @@ void loop() {
                 // burst_duration.
                 full_progress = float(millis() - burst_start) /
                                 float(((2 * burst_rate) * burst_count));
+                // Max output or random step.
+                target_cv = (sequence_shape == SEQUENCE_RANDOM) ? random(255) : 255;
             }
         }
 
@@ -120,36 +131,37 @@ void loop() {
             individual_progress =
                 float(millis() - last_burst) / float(2 * burst_rate);
         }
-        switch (individual_slope_mode) {
-            case FLAT:
-                individual_cv = 255;
+        switch (trig_shape) {
+            case TRIG_FLAT:
+                individual_cv = (counter % 2) ? target_cv : 0;
                 break;
-            case FADE_IN:
-                individual_cv = individual_progress * 255.f;
+            case TRIG_FADE_IN:
+                individual_cv = individual_progress * float(target_cv);
                 break;
-            case FADE_OUT:
-                individual_cv = (255.f - (individual_progress * 255.f));
+            case TRIG_FADE_OUT:
+                individual_cv = (float(target_cv) - (individual_progress * float(target_cv)));
                 break;
         }
 
         // Calculate overall burst progress.
-        switch (full_slope_mode) {
-            case FLAT:
-                full_cv = individual_cv;
+        switch (sequence_shape) {
+            case SEQUENCE_FLAT:
+            case SEQUENCE_RANDOM:
+                output = individual_cv;
                 break;
-            case FADE_IN:
-                full_cv = full_progress * individual_cv;
+            case SEQUENCE_FADE_IN:
+                output = full_progress * individual_cv;
                 break;
-            case FADE_OUT:
-                full_cv = (individual_cv - (full_progress * individual_cv));
+            case SEQUENCE_FADE_OUT:
+                output = (individual_cv - (full_progress * individual_cv));
                 break;
-        }
-        // Duty cycle check for flat burst shape.
-        if (individual_slope_mode == FLAT) {
-            full_cv = (counter % 2) ? full_cv : 0;
+            case SEQUENCE_TRIANGLE:
+                output = (counter <= burst_count) 
+                    ? (full_progress * individual_cv)
+                    : (individual_cv - (full_progress * individual_cv));
         }
 
-        analogWrite(CV_OUT, full_cv);
+        analogWrite(CV_OUT, output);
     }
     else {
         analogWrite(CV_OUT, 0);
@@ -189,12 +201,27 @@ bool beginBurst() {
     return begin_burst;
 }
 
-SlopeMode readSlopeMode(uint8_t pin) {
-    if (analogRead(pin) <= 341) {
-        return FADE_IN;
-    } else if (analogRead(pin) <= 682) {
-        return FLAT;
+SequenceShape readSequenceShape(uint8_t pin) {
+    int read = analogRead(pin);
+    if (read <= 204) {
+        return SEQUENCE_FADE_IN;
+    } else if (read <= 410) {
+        return SEQUENCE_FLAT;
+    } else if (read <= 616) {
+        return SEQUENCE_FADE_OUT;
+    } else if (read <= 820) {
+        return SEQUENCE_TRIANGLE;
     } else {
-        return FADE_OUT;
+        return SEQUENCE_RANDOM;
+    }
+}
+
+TrigShape readTrigShape(uint8_t pin) {
+    if (analogRead(pin) <= 341) {
+        return TRIG_FADE_IN;
+    } else if (analogRead(pin) <= 682) {
+        return TRIG_FLAT;
+    } else {
+        return TRIG_FADE_OUT;
     }
 }
