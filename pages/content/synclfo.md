@@ -53,15 +53,15 @@ Burst generator with rise and fall shape. [[source](https://github.com/awonak/Ha
 
 Trigger input will cause a burst generation with trigger period duration 
 defined by knob 1 and number of burst triggers defined by knob 2. 
-Additionally you can set the burst sequence shape to rise or fall with
-knob 3 and make each trigger rise or fall with knob 4.
+Additionally you can set the burst sequence shape to rise, fall, triangle or 
+random with knob 3 and make each trigger rise or fall with knob 4.
 
 {{< youtube J3xaACv5apQ >}}
 
 ```yaml
 Knob 1: Burst period duration
 Knob 2: Count of bursts
-Knob 3: Burst sequence rise/flat/fall
+Knob 3: Burst sequence rise/flat/fall/triangle/random
 Knob 4: Burst trigger rise/flat/fall
 
 TRIG_IN: Start a new burst sequence
