@@ -10,3 +10,6 @@
 [submodule "A-RYTH-MATIK/TimeBandit/src/libmodulove"]
 	path = A-RYTH-MATIK/TimeBandit/src/libmodulove
 	url = https://github.com/awonak/libmodulove.git
+[submodule "SyncLFO/Baby4/src/libmodulove"]
+	path = SyncLFO/Baby4/src/libmodulove
+	url = https://github.com/awonak/libmodulove.git
