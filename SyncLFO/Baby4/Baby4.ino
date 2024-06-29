@@ -11,9 +11,11 @@
 
 #include "src/libmodulove/synclfo.h"
 
+// ALTERNATE HARDWARE CONFIGURATION
+#define SYNCHRONIZER
+
 using namespace modulove;
 using namespace synclfo;
-
 
 // Declare SyncLFO hardware variable.
 SyncLFO hw;
@@ -22,6 +24,10 @@ SyncLFO hw;
 byte step = 0;
 
 void setup() {
+#ifdef SYNCHRONIZER
+    hw.config.Synchronizer = true;
+#endif
+
     // Initialize the SyncLFO peripherials.
     hw.Init();
 }
@@ -30,11 +36,16 @@ void loop() {
     // Read cv inputs to determine state for this loop.
     hw.ProcessInputs();
 
+    bool advance = hw.trig.State() == DigitalInput::STATE_RISING;
+    if (hw.config.Synchronizer) {
+        advance |= hw.b1.Change() == Button::CHANGE_PRESSED;
+    }
+
     // Detect if new trigger received and advance step.
-    if (hw.trig.State() == DigitalInput::STATE_RISING) {
+    if (advance) {
         step = (step + 1) % synclfo::P_COUNT;
     }
 
     // Write current step CV output.
-    hw.output.Value(hw.knobs[step].Read());
+    hw.output.Update(hw.knobs[step].Read());
 }
