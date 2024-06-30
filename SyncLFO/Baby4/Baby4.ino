@@ -9,7 +9,8 @@
  *
  */
 
-#include "src/libmodulove/synclfo.h"
+// ln -s ~/github/libmodulove ~/Arduino/libraries
+#include <synclfo.h>
 
 // ALTERNATE HARDWARE CONFIGURATION
 #define SYNCHRONIZER
