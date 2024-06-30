@@ -2,83 +2,90 @@
  * @file ADSR.ino
  * @author Adam Wonak (https://github.com/awonak/)
  * @brief ADSR Envelope Generator firmware for HAGIWO Sync Mod LFO (demo: TODO)
- * @version 0.1
+ * @version 0.2
  * @date 2023-05-08
  *
  * @copyright Copyright (c) 2023
  *
  */
 
-#include <avr/io.h>
+#include <synclfo.h>
 
-// GPIO Pin mapping.
-#define P1 0  // Attack
-#define P2 1  // Decay
-#define P3 3  // Sustain
-#define P4 5  // Release
+// ALTERNATE HARDWARE CONFIGURATION
+#define SYNCHRONIZER
 
-#define GATE_IN 3  // Gate in / Re-trig
-#define CV_OUT 10  // Envelope Output
-
-// Uncomment to print state to serial monitoring output.
+// Debug flag
 // #define DEBUG
 
-bool gate = 1;  // External gate input detect: 0=gate off, 1=gate on
-bool old_gate = 0;
+using namespace modulove;
+using namespace synclfo;
 
-const byte top = 255;  // Envelope state max value
-byte val = 0;          // Envelope state value
-int time = 0;          // Envelope delay time between incremental change
-int sustain = 0;       // Sustain value;
+// Declare SyncLFO hardware variable.
+SyncLFO hw;
+
+int val = 0;      // Envelope state value
+int time = 0;     // Envelope delay time between incremental change
+int sustain = 0;  // Sustain value;
 
 // DEBUG
 unsigned long last_print;
 unsigned long period = 200;
 
 enum Stage {
+    WAIT,
     ATTACK,
     DECAY,
     SUSTAIN,
     RELEASE
 };
-Stage stage = ATTACK;
+Stage stage = WAIT;
 
 void setup() {
-    Serial.begin(9600);
+#ifdef SYNCHRONIZER
+    hw.config.Synchronizer = true;
+#endif
 
-    pinMode(GATE_IN, INPUT);  // Gate in
-    pinMode(CV_OUT, OUTPUT);  // Envelope cv out
+    // Initialize the SyncLFO peripherials.
+    hw.Init();
 
-    // Register setting for high frequency PWM.
-    TCCR1A = 0b00100001;
-    TCCR1B = 0b00100001;
-
-    delay(100);
+#ifdef DEBUG
+    Serial.begin(115200);
+#endif
 }
 
 void loop() {
-    // Check gate input.
-    old_gate = gate;
-    gate = digitalRead(GATE_IN);
+    // Read cv inputs to determine state for this loop.
+    hw.ProcessInputs();
+
+    bool gate_rising = hw.gate.State() == DigitalInput::STATE_RISING;
+    bool gate_falling = hw.gate.State() == DigitalInput::STATE_FALLING;
+    bool gate_high = hw.gate.On();
+
+    if (hw.config.Synchronizer) {
+        gate_rising |= hw.b1.Change() == Button::CHANGE_PRESSED;
+        gate_falling |= hw.b1.Change() == Button::CHANGE_RELEASED;
+        gate_high |= hw.b1.On();
+    }
 
     // Detect if gate has just opened and begin envelope attack.
-    if (old_gate == 0 && gate == 1) {
+    if (gate_rising) {
         stage = ATTACK;
         val = 0;
     }
 
     // Detect if gate has just closed and begin the release envelope.
-    if (old_gate == 1 && gate == 0) {
+    if (gate_falling) {
         stage = RELEASE;
+        gate_high = false;
     }
 
     // Advance the cv value for the current envelope stage according to the related stage knob position.
     switch (stage) {
         case ATTACK:
             // At minimum attack levels, traverse the curve at a faster rate than default.
-            val += analogRead(P1) == 0 ? min(top - val, 10) : 1;
+            val += hw.p1.Read() == 0 ? min(MAX_INPUT - val, 10) : 1;
 
-            if (val >= top) {
+            if (val >= MAX_INPUT) {
                 stage = DECAY;
             }
             break;
@@ -87,25 +94,29 @@ void loop() {
             // Decrease the envelope value if it's still falling.
             if (val > 0) {
                 // At minimum release levels, traverse the curve at a faster rate than default.
-                val -= analogRead(P2) == 0 ? min(val, 10) : 1;
+                val -= hw.p2.Read() == 0 ? min(val, 10) : 1;
             }
 
             // Check if the falling decay envelope has reached sustain level.
-            sustain = min(map(analogRead(P3), 0, 1023, 0, top), val);
-            if (val <= sustain) {
+            sustain = min(hw.p3.Read(), val);
+            if (val <= sustain && gate_high) {
                 stage = SUSTAIN;
+            } else if (!gate_high) {
+                stage = RELEASE;
             }
             break;
 
         case SUSTAIN:
-            val = map(analogRead(P3), 0, 1023, 0, top);
+            val = hw.p3.Read();
             break;
 
         case RELEASE:
             // Decrease the envelope value if it's still falling.
             if (val > 0) {
                 // At minimum release levels, traverse the curve at a faster rate than default.
-                val -= analogRead(P4) == 0 ? min(val, 10) : 1;
+                val -= hw.p4.Read() == 0 ? min(val, 10) : 1;
+            } else {
+                stage = WAIT;
             }
             break;
     }
@@ -113,16 +124,16 @@ void loop() {
     // Attack / Decay / Release incremental delay time.
     switch (stage) {
         case ATTACK:
-            time = analogRead(P1);
+            time = hw.p1.Read();
             break;
         case DECAY:
-            time = analogRead(P2);
+            time = hw.p2.Read();
             break;
         case SUSTAIN:
             time = 1000;  // Default time for Sustain.
             break;
         case RELEASE:
-            time = analogRead(P4);
+            time = hw.p4.Read();
             break;
     }
 
@@ -130,7 +141,7 @@ void loop() {
     delayMicroseconds(time * 10);
 
     // Write envelope CV output
-    analogWrite(CV_OUT, val);
+    hw.output.Update(val);
 
     debug();
 }
