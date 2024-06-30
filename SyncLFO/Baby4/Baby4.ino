@@ -48,5 +48,5 @@ void loop() {
     }
 
     // Write current step CV output.
-    hw.output.Update(hw.knobs[step].Read());
+    hw.output.Update(hw.knobs[step]->Read());
 }
