@@ -129,5 +129,5 @@ void loop() {
 
 // Calculate the linear to exponential slope value.
 int slope (int input) {
-    return (input * log10(2)) / (log10(255));
+    return (input * log10(2)) / (log10(MAX_OUTPUT));
 }
