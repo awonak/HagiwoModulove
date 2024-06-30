@@ -2,7 +2,7 @@
  * @file Baby4.ino
  * @author Adam Wonak (https://github.com/awonak/)
  * @brief 4 step cv sequencer firmware for HAGIWO Sync Mod LFO (demo: TODO)
- * @version 0.1
+ * @version 0.2
  * @date 2023-05-09
  *
  * @copyright Copyright (c) 2023
@@ -20,9 +20,6 @@ using namespace synclfo;
 // Declare SyncLFO hardware variable.
 SyncLFO hw;
 
-// Current CV step (0,1,2,3)
-byte step = 0;
-
 void setup() {
 #ifdef SYNCHRONIZER
     hw.config.Synchronizer = true;
@@ -33,6 +30,9 @@ void setup() {
 }
 
 void loop() {
+    // Current CV step (0,1,2,3)
+    static byte step = 0;
+
     // Read cv inputs to determine state for this loop.
     hw.ProcessInputs();
 
