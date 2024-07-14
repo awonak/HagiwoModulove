@@ -24,7 +24,8 @@ This repository uses git submodules so there are extra steps to pull down all of
 
 ```shell
 $ git clone https://github.com/awonak/HagiwoModulove.git
-# Install libmodulove as a git submodule
+# Install libmodulove as a git submodule inside the sketch folder.
+$ cd HagiwoModulove/<sketch>
 $ git submodule update --init --recursive
 # Or clone/download into the Arduino library folder
 $ git clone https://github.com/awonak/libmodulove.git
