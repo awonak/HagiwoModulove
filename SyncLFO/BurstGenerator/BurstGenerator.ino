@@ -30,11 +30,6 @@ using namespace synclfo;
 // Declare SyncLFO hardware variable.
 SyncLFO hw;
 
-#ifdef SYNCHRONIZER
-unsigned long _last_press;
-const int DEBOUNCE_MS = 10;
-#endif
-
 // The max burst gate count.
 const int MAX_BURST_COUNT = 16;
 
@@ -151,7 +146,7 @@ void loop() {
                              : (individual_cv - (full_progress * individual_cv));
         }
 
-        hw.output.Update(output);
+        hw.output.Update10bit(output);
     } else {
         hw.output.Update(0);
     }

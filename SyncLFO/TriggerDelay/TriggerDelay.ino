@@ -105,7 +105,7 @@ void loop() {
             }
             break;
         case GATE:
-            output = 255;
+            output = MAX_OUTPUT;
             if (millis() > trig_start + trig_duration) {
                 stage = RELEASE;
             }
