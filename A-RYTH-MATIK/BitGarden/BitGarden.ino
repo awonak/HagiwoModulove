@@ -29,6 +29,9 @@
 // Note: this affects performance and locks LED 4 & 5 on HIGH.
 // #define DEBUG
 
+// Flag for rotating the panel 180 degrees.
+// #define ROTATE_PANEL
+
 // Flag for reversing the encoder direction.
 // #define ENCODER_REVERSED
 
@@ -119,6 +122,15 @@ void setup() {
 #ifdef DEBUG
     Serial.begin(115200);
 #endif
+
+#ifdef ROTATE_PANEL
+    hw.config.RotatePanel = true;
+#endif
+
+#ifdef ENCODER_REVERSED
+    hw.config.ReverseEncoder = true;
+#endif
+
     // Initialize the A-RYTH-MATIK peripherials.
     hw.Init();
 

@@ -2,7 +2,7 @@
  * @file TriggerDelay.ino
  * @author Adam Wonak (https://github.com/awonak/)
  * @brief 
- * @version 0.1
+ * @version 0.2
  * @date 2024-04-08
  *
  * @copyright Copyright (c) 2024
@@ -15,32 +15,20 @@
  *
  */
 
+// ln -s ~/github/libmodulove ~/Arduino/libraries
+#include <synclfo.h>
+
 // ALTERNATE HARDWARE CONFIGURATION
 #define SYNCHRONIZER
 
-// GPIO Pin mapping.
-#define P1 A0  // Trigger Delay
-#define P2 A1  // Gate Duration
-#define P3 A3  // Attack Slope
-#define P4 A5  // Release Slope
+using namespace modulove;
+using namespace synclfo;
 
-#define DIGITAL_IN 3   // Trigger Input to advance step
-#define CV_OUT 10      // CV Output for current step
-
-#ifdef SYNCHRONIZER
-    #define B1 A2  // Button 1 (bodged from original D13)
-    #define B2 12  // Button 2
-    #define LED1 11  // Slider LED 1
-    #define LED2 10  // Slider LED 2
-    byte button1_state;
-    byte button2_state;
-    unsigned long _last_press;
-    const int DEBOUNCE_MS = 10;
-#endif
+// Declare SyncLFO hardware variable.
+SyncLFO hw;
 
 // The max trigger delay / gate duration.
 const int MAX_DELAY_MS = 2000;
-
 
 enum Stage {
     DELAY,
@@ -52,7 +40,6 @@ enum Stage {
 Stage stage = WAIT;
 
 // Script state.
-uint8_t old_din = 0;  // Digital input read value.
 unsigned long trig_start;
 int trig_delay;
 int trig_duration;
@@ -64,64 +51,35 @@ int counter;
 int output;
 
 void setup() {
-    pinMode(DIGITAL_IN, INPUT);
-    pinMode(CV_OUT, OUTPUT);
-    pinMode(P1, INPUT);
-    pinMode(P2, INPUT);
-    pinMode(P3, INPUT);
-    pinMode(P4, INPUT);
-
 #ifdef SYNCHRONIZER
-    pinMode(B1, INPUT_PULLUP);
-    pinMode(B2, INPUT_PULLUP);
-    pinMode(LED1, OUTPUT);
-    pinMode(LED2, OUTPUT);
+    hw.config.Synchronizer = true;
 #endif
 
-    // Register setting for high frequency PWM.
-    TCCR1A = 0b00100001;
-    TCCR1B = 0b00100001;
+    // Initialize the SyncLFO peripherials.
+    hw.Init();
 }
 
 void loop() {
-    bool trigger_start;
-    int new_din;
+    static bool trigger_start;
     
-    // Read all inputs.
-    new_din = digitalRead(DIGITAL_IN);
-    trigger_start = new_din == 1 && old_din == 0;
-    old_din = new_din;
+    // Read cv inputs to determine state for this loop.
+    hw.ProcessInputs();
 
-#ifdef SYNCHRONIZER
-    // Echo digital input on LED 1.
-    digitalWrite(LED1, old_din);
-
-    // Read current button state.
-    bool new_button1_state = digitalRead(B1);
-
-    // State check with debounce.
-    bool _debounced = (millis() - _last_press) > DEBOUNCE_MS;
-    bool _pressed = button1_state == 1 && new_button1_state == 0 && _debounced;
-    bool _released = button1_state == 0 && new_button1_state == 1 && _debounced;
-
-    // If the button has been pressed, set trigger_start to True if it isn't already.
-    trigger_start |= _pressed;
-
-    // Update variables for next loop
-    button1_state = new_button1_state;
-    _last_press = (_pressed || _released) ? millis(): _last_press;
-#endif
+    trigger_start = hw.trig.State() == DigitalInput::STATE_RISING;
+    if (hw.config.Synchronizer) {
+        trigger_start |= hw.b1.Change() == Button::CHANGE_PRESSED;
+    }
 
     // Detect if a new trigger has been received.
     if (trigger_start) {
         // Read the trigger delay and duration.
-        trig_delay = map(analogRead(P1), 0, 1023, 0, MAX_DELAY_MS);
-        trig_duration = map(analogRead(P2), 0, 1023, 20, MAX_DELAY_MS);
+        trig_delay = map(hw.p1.Read(), 0, MAX_INPUT, 0, MAX_DELAY_MS);
+        trig_duration = map(hw.p2.Read(), 0, MAX_INPUT, 20, MAX_DELAY_MS);
         trig_start = millis();
 
         // Calculate the exponential slope value.
-        attack_count = analogRead(P3);
-        release_count = analogRead(P4);
+        attack_count = hw.p3.Read();
+        release_count = hw.p4.Read();
         attack_slope = slope(attack_count);
         release_slope = slope(release_count);
 
@@ -142,12 +100,12 @@ void loop() {
                 trig_start = millis();
                 counter = release_count;
             } else {
-                output = min(pow(2, (float(counter) / float(attack_slope))), 255);
+                output = min(pow(2, (float(counter) / float(attack_slope))), MAX_OUTPUT);
                 counter = min(counter++, attack_count);
             }
             break;
         case GATE:
-            output = 255;
+            output = MAX_OUTPUT;
             if (millis() > trig_start + trig_duration) {
                 stage = RELEASE;
             }
@@ -157,7 +115,7 @@ void loop() {
                 stage = WAIT;
                 output = 0;
             } else {
-                output = min(pow(2, float(counter) / float(release_slope)), 255);
+                output = min(pow(2, float(counter) / float(release_slope)), MAX_OUTPUT);
                 if (counter > 0) counter--;
             }
             break;
@@ -166,10 +124,10 @@ void loop() {
     }
 
     // Set output voltage.
-    analogWrite(CV_OUT, output);
+    hw.output.Update(output);
 }
 
 // Calculate the linear to exponential slope value.
 int slope (int input) {
-    return (input * log10(2)) / (log10(255));
+    return (input * log10(2)) / (log10(MAX_OUTPUT));
 }

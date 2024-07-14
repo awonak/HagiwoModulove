@@ -2,57 +2,51 @@
  * @file Baby4.ino
  * @author Adam Wonak (https://github.com/awonak/)
  * @brief 4 step cv sequencer firmware for HAGIWO Sync Mod LFO (demo: TODO)
- * @version 0.1
+ * @version 0.2
  * @date 2023-05-09
  *
  * @copyright Copyright (c) 2023
  *
  */
 
-#include <avr/io.h>
+// ln -s ~/github/libmodulove ~/Arduino/libraries
+#include <synclfo.h>
 
-// GPIO Pin mapping.
-#define P1 0  // Step 1
-#define P2 1  // Step 2
-#define P3 3  // Step 3
-#define P4 5  // Step 4
+// ALTERNATE HARDWARE CONFIGURATION
+#define SYNCHRONIZER
 
-#define TRIG_IN 3  // Trigger Input to advance step
-#define CV_OUT 10  // CV Output for current step
+using namespace modulove;
+using namespace synclfo;
 
-bool clk = 1;  // External trigger input detect
-bool old_clk = 0;
-
-const byte P[] = {P1, P2, P3, P4};  // Array of knob GPIO pin identifiers.
-
-const byte max_val = 255;  // CV step max value
-const byte max_step = 4;   // Max steps in the CV sequence (corresponding to number of knobs)
-
-byte val = 0;   // Current CV value
-byte step = 0;  // Current CV step (0,1,2,3)
-int read = 0;   // Raw cv read from pot for current step
+// Declare SyncLFO hardware variable.
+SyncLFO hw;
 
 void setup() {
-    pinMode(TRIG_IN, INPUT);  // Trigger in
-    pinMode(CV_OUT, OUTPUT);  // Current cv step out
+#ifdef SYNCHRONIZER
+    hw.config.Synchronizer = true;
+#endif
 
-    // Register setting for high frequency PWM.
-    TCCR1A = 0b00100001;
-    TCCR1B = 0b00100001;
-
-    delay(100);
+    // Initialize the SyncLFO peripherials.
+    hw.Init();
 }
 
 void loop() {
-    old_clk = clk;
-    clk = digitalRead(TRIG_IN);
+    // Current CV step (0,1,2,3)
+    static byte step = 0;
+
+    // Read cv inputs to determine state for this loop.
+    hw.ProcessInputs();
+
+    bool advance = hw.trig.State() == DigitalInput::STATE_RISING;
+    if (hw.config.Synchronizer) {
+        advance |= hw.b1.Change() == Button::CHANGE_PRESSED;
+    }
 
     // Detect if new trigger received and advance step.
-    if (old_clk == 0 && clk == 1) {
-        step = (step + 1) % max_step;
+    if (advance) {
+        step = (step + 1) % synclfo::P_COUNT;
     }
 
     // Write current step CV output.
-    val = map(analogRead(P[step]), 0, 1023, 0, max_val);
-    analogWrite(CV_OUT, val);
+    hw.output.Update10bit(hw.knobs[step]->Read());
 }

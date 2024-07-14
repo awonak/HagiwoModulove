@@ -2,7 +2,7 @@
  * @file Polyrhythm.ino
  * @author Adam Wonak (https://github.com/awonak/)
  * @brief Generate polyrhythms based on 16 step counter knobs for HAGIWO Sync Mod LFO (demo: TODO)
- * @version 0.2
+ * @version 0.3
  * @date 2023-05-09
  *
  * @copyright Copyright (c) 2023
@@ -27,33 +27,30 @@
  *
  */
 
-#include <avr/io.h>
+#include <synclfo.h>
 
-// GPIO Pin mapping.
-#define P1 0  // Polyrhythm count 1
-#define P2 1  // Polyrhythm count 2
-#define P3 3  // Polyrhythm count 3
-#define P4 5  // Logic mode selection
+// ALTERNATE HARDWARE CONFIGURATION
+#define SYNCHRONIZER
 
-#define TRIG_IN 3  // Trigger Input to advance the rhythm counter
-#define CV_OUT 10  // CV Output for polyrhythm triggers
+// Debug flag
+// #define DEBUG
+
+using namespace modulove;
+using namespace synclfo;
+
+// Declare SyncLFO hardware variable.
+SyncLFO hw;
 
 // Define constant voltage values for analog cv output.
-#define CV_3V 77
-#define CV_5V 128
-
-// Flag for enabling debug print to serial monitoring output.
-const bool DEBUG = false;
+const int CV_3V = (float(MAX_OUTPUT) / 3.0);
+const int CV_5V (float(MAX_OUTPUT) / 2.0);
 
 // Script state variables.
-bool clk = 0;  // External trigger input detect
-bool old_clk = 0;
-const byte max_rhythm = 16;
+const byte max_hits = 16;
 byte hits;
 unsigned long counter;
 
-byte P[] = {P1, P2, P3};  // Array of knob GPIO identifiers.
-byte R[] = {0, 0, 0};     // Polyrhythm rhythm subdivision choice per knob.
+byte rhythm[] = {0, 0, 0};  // Polyrhythm rhythm subdivision choice per knob.
 
 enum LogicMode { OR,
                  XOR,
@@ -62,40 +59,40 @@ enum LogicMode { OR,
 LogicMode mode = OR;
 
 void setup() {
-    Serial.begin(9600);
-    pinMode(TRIG_IN, INPUT);  // Trigger in
-    pinMode(CV_OUT, OUTPUT);  // Polyrhythm trigger cv output
+#ifdef SYNCHRONIZER
+    hw.config.Synchronizer = true;
+#endif
+#ifdef DEBUG
+    Serial.begin(115200);
+#endif
+
+    // Initialize the SyncLFO peripherials.
+    hw.Init();
 
     // Initialize logic mode and rhythm/counter arrays.
     update_mode();
     update_polyrhthms();
-
-    // Register setting for high frequency PWM.
-    TCCR1A = 0b00100001;
-    TCCR1B = 0b00100001;
-
-    delay(100);
 }
 
 void loop() {
-    old_clk = clk;
-    clk = digitalRead(TRIG_IN);
+    // Read cv inputs to determine state for this loop.
+    hw.ProcessInputs();
 
     // Detect if new trigger received, advance counter and check for hit on the beat.
-    if (old_clk == 0 && clk == 1) {
+    if (hw.gate.State() == DigitalInput::STATE_RISING) {
         // Advance the beat counter and get the hits on this beat.
         counter++;
         hits = current_beat_hits();
 
         // Get the output cv value for the current beat and set the cv output.
-        analogWrite(CV_OUT, hits_to_cv(hits));
+        hw.output.Update(hits_to_cv(hits));
 
         debug();
     }
 
     // Detect if trigger has just ended and turn off the trigger cv output.
-    if (old_clk == 1 && clk == 0) {
-        analogWrite(CV_OUT, 0);
+    if (hw.gate.State() == DigitalInput::STATE_FALLING) {
+        hw.output.Low();
     }
 
     update_mode();
@@ -105,11 +102,11 @@ void loop() {
 // Advance the counter for each polyrhythm and return the number rhythm triggers on this beat.
 byte current_beat_hits() {
     byte hits = 0;
-    for (byte i = 0; i < sizeof(R); i++) {
-        if (R[i] == 0) {
+    for (byte i = 0; i < sizeof(rhythm); i++) {
+        if (rhythm[i] == 0) {
             continue;
         }
-        if (counter % R[i] == 0) {
+        if (counter % rhythm[i] == 0) {
             hits++;
         }
     }
@@ -143,7 +140,7 @@ byte hits_to_cv(byte hits) {
 
 // Update the logic mode choice based on the knob value.
 void update_mode() {
-    switch (analogRead(P4) >> 8) {
+    switch (hw.p4.Read() >> 8) {
         case 0:
             mode = OR;
             break;
@@ -161,24 +158,24 @@ void update_mode() {
 
 // Update the rhythm value for each rhythm knob.
 void update_polyrhthms() {
-    for (byte i = 0; i < sizeof(P); i++) {
-        int raw = map(analogRead(P[i]), 0, 1023, 0, max_rhythm);
+    for (int i = 0; i < sizeof(rhythm); i++) {
+        int raw = map(hw.knobs[i]->Read(), 0, MAX_INPUT-1, 0, max_hits);
         // When rhythm is 0 CCW, no rhythm is set, otherwise rhythm is
         // triggered every 16 beats to every 1 beat moving CW.
-        R[i] = (raw > 0) ? (max_rhythm + 1) - raw : 0;
+        rhythm[i] = (raw > 0) ? (max_hits + 1) - raw : 0;
     }
 }
 
 void debug() {
-    if (DEBUG) {
-        Serial.println(
-            "Hits: " + String(hits)                //
-            + "\tCV: " + String(hits_to_cv(hits))  //
-            + "\tR1: " + String(R[0])              //
-            + "\tR2: " + String(R[1])              //
-            + "\tR3: " + String(R[2])              //
-            + "\tMode: " + String(mode)            //
-            + "\tCounter: " + String(counter)      //
-        );
-    }
+#ifdef DEBUG
+    Serial.println(
+        "Hits: " + String(hits)                //
+        + "\tCV: " + String(hits_to_cv(hits))  //
+        + "\tR1: " + String(rhythm[0])              //
+        + "\tR2: " + String(rhythm[1])              //
+        + "\tR3: " + String(rhythm[2])              //
+        + "\tMode: " + String(mode)            //
+        + "\tCounter: " + String(counter)      //
+    );
+#endif
 }
