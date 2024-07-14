@@ -23,9 +23,12 @@ using namespace synclfo;
 // Declare SyncLFO hardware variable.
 SyncLFO hw;
 
-int val = 0;      // Envelope state value
-int time = 0;     // Envelope delay time between incremental change
-int sustain = 0;  // Sustain value;
+const int MAX_DURATION = 5000;  // Max env stage time 5 seconds.
+
+int val = 0;       // Envelope state value
+int prev_val = 0;  // Previous envelope stage value
+unsigned long stage_start_time;
+bool loop_enabled = false;
 
 // DEBUG
 unsigned long last_print;
@@ -44,13 +47,12 @@ void setup() {
 #ifdef SYNCHRONIZER
     hw.config.Synchronizer = true;
 #endif
-
-    // Initialize the SyncLFO peripherials.
-    hw.Init();
-
 #ifdef DEBUG
     Serial.begin(115200);
 #endif
+
+    // Initialize the SyncLFO peripherials.
+    hw.Init();
 }
 
 void loop() {
@@ -69,81 +71,84 @@ void loop() {
 
     // Detect if gate has just opened and begin envelope attack.
     if (gate_rising) {
-        stage = ATTACK;
+        changeStage(ATTACK);
         val = 0;
     }
 
-    // Detect if gate has just closed and begin the release envelope.
-    if (gate_falling) {
-        stage = RELEASE;
+    // Detect if gate has just closed and not already in release stage, and begin the release envelope.
+    if (gate_falling && stage != RELEASE) {
+        changeStage(RELEASE);
         gate_high = false;
     }
 
+    // Toggle looping mode with button 2.
+    if (hw.b2.Change() == Button::CHANGE_PRESSED) {
+        val = 0;
+        loop_enabled = !loop_enabled;
+        loop_enabled
+            ? changeStage(ATTACK)
+            : changeStage(WAIT);
+    }
+
+    unsigned long current_time = millis();
+    int sustain = map(hw.p3.Read(), 1, MAX_INPUT, 0, MAX_OUTPUT);
+
     // Advance the cv value for the current envelope stage according to the related stage knob position.
     switch (stage) {
-        case ATTACK:
-            // At minimum attack levels, traverse the curve at a faster rate than default.
-            val += hw.p1.Read() == 0 ? min(MAX_INPUT - val, 10) : 1;
+        case ATTACK: {
+            int attack_time = map(hw.p1.Read(), 0, MAX_INPUT, 1, MAX_DURATION);
+            int elapsed_time = min(current_time - stage_start_time, attack_time);
+            val = map(elapsed_time, 0, attack_time, 0, MAX_OUTPUT);
 
-            if (val >= MAX_INPUT) {
-                stage = DECAY;
+            if (elapsed_time >= attack_time) {
+                loop_enabled
+                    ? changeStage(RELEASE)
+                    : changeStage(DECAY);
             }
             break;
+        }
 
-        case DECAY:
-            // Decrease the envelope value if it's still falling.
-            if (val > 0) {
-                // At minimum release levels, traverse the curve at a faster rate than default.
-                val -= hw.p2.Read() == 0 ? min(val, 10) : 1;
-            }
+        case DECAY: {
+            int decay_time = map(hw.p2.Read(), 0, MAX_INPUT, 1, MAX_DURATION);
+            int elapsed_time = min(current_time - stage_start_time, decay_time);
+            val = map(elapsed_time, 0, decay_time, prev_val, sustain);
 
-            // Check if the falling decay envelope has reached sustain level.
-            sustain = min(hw.p3.Read(), val);
-            if (val <= sustain && gate_high) {
-                stage = SUSTAIN;
-            } else if (!gate_high) {
-                stage = RELEASE;
+            if (val <= sustain) {
+                loop_enabled
+                    ? changeStage(RELEASE)
+                    : changeStage(SUSTAIN);
             }
             break;
+        }
 
         case SUSTAIN:
-            val = hw.p3.Read();
+            val = sustain;
             break;
 
-        case RELEASE:
-            // Decrease the envelope value if it's still falling.
-            if (val > 0) {
-                // At minimum release levels, traverse the curve at a faster rate than default.
-                val -= hw.p4.Read() == 0 ? min(val, 10) : 1;
-            } else {
-                stage = WAIT;
+        case RELEASE: {
+            int release_time = map(hw.p4.Read(), 0, MAX_INPUT, 1, MAX_DURATION);
+            int elapsed_time = min(current_time - stage_start_time, release_time);
+            val = map(elapsed_time, 0, release_time, prev_val, 0);
+
+            if (val == 0) {
+                loop_enabled
+                    ? changeStage(ATTACK)
+                    : changeStage(WAIT);
             }
             break;
+        }
     }
 
-    // Attack / Decay / Release incremental delay time.
-    switch (stage) {
-        case ATTACK:
-            time = hw.p1.Read();
-            break;
-        case DECAY:
-            time = hw.p2.Read();
-            break;
-        case SUSTAIN:
-            time = 1000;  // Default time for Sustain.
-            break;
-        case RELEASE:
-            time = hw.p4.Read();
-            break;
-    }
-
-    // Short sleep duration before advancing to the next step in the curve table.
-    delayMicroseconds(time * 10);
-
-    // Write envelope CV output
+    // Write envelope CV output.
     hw.output.Update(val);
 
     debug();
+}
+
+void changeStage(Stage new_stage) {
+    stage = new_stage;
+    stage_start_time = millis();
+    prev_val = val;
 }
 
 void debug() {
