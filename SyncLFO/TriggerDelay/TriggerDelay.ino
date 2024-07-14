@@ -73,8 +73,8 @@ void loop() {
     // Detect if a new trigger has been received.
     if (trigger_start) {
         // Read the trigger delay and duration.
-        trig_delay = map(hw.p1.Read(), 0, modulove::MAX_INPUT, 0, MAX_DELAY_MS);
-        trig_duration = map(hw.p2.Read(), 0, modulove::MAX_INPUT, 20, MAX_DELAY_MS);
+        trig_delay = map(hw.p1.Read(), 0, MAX_INPUT, 0, MAX_DELAY_MS);
+        trig_duration = map(hw.p2.Read(), 0, MAX_INPUT, 20, MAX_DELAY_MS);
         trig_start = millis();
 
         // Calculate the exponential slope value.

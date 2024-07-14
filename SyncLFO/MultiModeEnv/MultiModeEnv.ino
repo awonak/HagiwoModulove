@@ -3,7 +3,7 @@
  * @author Adam Wonak (https://github.com/awonak/)
  * @author Hagiwo (https://note.com/solder_state/n/n69643b792274)
  * @brief Multi-mode Envelope Generator firmware for HAGIWO Sync Mod LFO (demo: TODO)
- * @version 0.2
+ * @version 0.3
  * @date 2023-04-19
  *
  * @copyright Copyright (c) 2023

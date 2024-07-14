@@ -2,7 +2,7 @@
  * @file Polyrhythm.ino
  * @author Adam Wonak (https://github.com/awonak/)
  * @brief Generate polyrhythms based on 16 step counter knobs for HAGIWO Sync Mod LFO (demo: TODO)
- * @version 0.2
+ * @version 0.3
  * @date 2023-05-09
  *
  * @copyright Copyright (c) 2023

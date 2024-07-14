@@ -2,7 +2,7 @@
  * @file GenerativeSequencer.ino
  * @author Adam Wonak (https://github.com/awonak/)
  * @brief Generative Sequencer firmware for HAGIWO Sync Mod LFO (demo: https://youtu.be/okj47TcXJXg)
- * @version 0.1
+ * @version 0.2
  * @date 2023-03-26
  *
  * @copyright Copyright (c) 2023

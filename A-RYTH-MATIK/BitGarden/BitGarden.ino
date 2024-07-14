@@ -30,10 +30,10 @@
 // #define DEBUG
 
 // Flag for rotating the panel 180 degrees.
-#define ROTATE_PANEL
+// #define ROTATE_PANEL
 
 // Flag for reversing the encoder direction.
-#define ENCODER_REVERSED
+// #define ENCODER_REVERSED
 
 // Graphics identifiers
 #define RIGHT_TRIANGLE 0x10
