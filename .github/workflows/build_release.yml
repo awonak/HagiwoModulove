@@ -37,6 +37,8 @@ jobs:
           arduino-cli lib install "Adafruit GFX Library"
           arduino-cli lib install "Adafruit SSD1306"
           arduino-cli lib install SimpleRotary
+          arduino-cli lib install FastLED
+
       - name: Compile sketch and rename output file for release
         working-directory: ./${{ matrix.module}}
         run: |
@@ -84,6 +86,9 @@ jobs:
             arduino-cli config set library.enable_unsafe_install true
             arduino-cli lib install --git-url https://github.com/awonak/libModulove.git
             arduino-cli lib install FastLED
+            arduino-cli lib install "Adafruit GFX Library"
+            arduino-cli lib install "Adafruit SSD1306"
+            arduino-cli lib install SimpleRotary
 
         - name: Compile sketch and rename output file for release
           working-directory: ./${{ matrix.module}}
