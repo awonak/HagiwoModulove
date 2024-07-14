@@ -10,16 +10,19 @@
  *
  */
 
-#include <avr/io.h>
+#include <synclfo.h>
 
-// GPIO Pin mapping.
-#define P1 0  // Attack
-#define P2 1  // Release
-#define P3 3  // Mode (AR, ASR, SLOW AR (10x), LFO)
-#define P4 5  // Curve (LOG, LINEAR, EXP)
+// ALTERNATE HARDWARE CONFIGURATION
+#define SYNCHRONIZER
 
-#define GATE_IN 3  // Gate in / Re-trig
-#define CV_OUT 10  // Envelope Output
+// Debug flag
+// #define DEBUG
+
+using namespace modulove;
+using namespace synclfo;
+
+// Declare SyncLFO hardware variable.
+SyncLFO hw;
 
 // Envelope curve wavetable
 const static word LOG[200] PROGMEM = {
@@ -29,35 +32,52 @@ const static word LINEAR[200] PROGMEM = {
 const static word EXP[200] PROGMEM = {
     0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 6, 6, 6, 6, 7, 7, 7, 7, 8, 8, 8, 9, 9, 9, 10, 10, 10, 11, 11, 12, 12, 12, 13, 13, 14, 14, 15, 15, 16, 16, 17, 18, 18, 19, 20, 20, 21, 22, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 39, 40, 41, 43, 44, 46, 47, 49, 50, 52, 54, 56, 58, 59, 61, 63, 66, 68, 70, 72, 75, 77, 80, 83, 85, 88, 91, 94, 97, 100, 104, 107, 111, 114, 118, 122, 126, 130, 135, 139, 144, 148, 153, 158, 164, 169, 175, 180, 186, 192, 199, 205, 212, 219, 226, 234, 241, 249, 258, 266, 275, 284, 293, 303, 313, 323, 334, 345, 356, 368, 380, 392, 405, 418, 432, 446, 461, 476, 491, 507, 524, 541, 559, 577, 596, 616, 636, 657, 678, 701, 723, 747, 772, 797, 823, 850, 878, 907, 936, 967, 1000};
 
-int i = 0;      // Envelope progress state time count
-bool gate = 1;  // External gate input detect: 0=gate off, 1=gate on
-bool old_gate = 0;
+int i = 0;  // Envelope progress state time count
 
 long time = 100;      // Envelope delay time between incremental change
-byte mode = 0;        // Mode: 0=AR, 1=ASR, 2=SLOW AR (10x), 3=LFO
-byte curve = 0;       // Waveform Curve: 0=LOG, 1=LINEAR, 2=EXP
 bool attack_end = 0;  // State of rising or falling envelope: 0=rising, 1=falling
 float duty = 0;       // PWM duty
 
-void setup() {
-    pinMode(GATE_IN, INPUT);  // Gate in
-    pinMode(CV_OUT, OUTPUT);  // EG out
+enum Mode {
+    MODE_AR,
+    MODE_ASR,
+    MODE_SLOW,
+    MODE_LFO,
+};
 
-    // PWM register setting
-    TCCR1A = 0b00100001;
-    TCCR1B = 0b00100001;
+enum Curve {
+    CURVE_LOG,
+    CURVE_LINEAR,
+    CURVE_EXP,
+};
+
+void setup() {
+#ifdef SYNCHRONIZER
+    hw.config.Synchronizer = true;
+#endif
+#ifdef DEBUG
+    Serial.begin(115200);
+#endif
+
+    // Initialize the SyncLFO peripherials.
+    hw.Init();
 }
 
 void loop() {
-    // Check gate input.
-    old_gate = gate;
-    gate = digitalRead(GATE_IN);
+    // Read cv inputs to determine state for this loop.
+    hw.ProcessInputs();
 
-    update_mode();
-    update_curve();
+    bool gate_rising = hw.gate.State() == DigitalInput::STATE_RISING;
+    bool gate_high = hw.gate.On();
+    Mode mode = read_mode();
+
+    if (hw.config.Synchronizer) {
+        gate_rising |= hw.b1.Change() == Button::CHANGE_PRESSED;
+        gate_high |= hw.b1.On();
+    }
 
     // Detect if a new trigger has been received.
-    if (old_gate == 0 && gate == 1) {
+    if (gate_rising) {
         duty = 0;
         attack_end = 0;
         i = 0;
@@ -67,7 +87,7 @@ void loop() {
     // Rising envelope
     if (attack_end == 0) {
         // At minimum attack levels, traverse the curve at a faster rate than default.
-        (analogRead(P1) > 0) ? i++ : i += min(199 - i, 10);
+        (hw.p1.Read() > 0) ? i++ : i += min(199 - i, 10);
 
         if (i >= 199) {
             attack_end = 1;
@@ -76,55 +96,64 @@ void loop() {
     // Falling envelope
     else if (attack_end == 1) {
         // Check if falling and not in sustain mode.
-        if (i > 0 && !(mode == 1 && gate == 1)) {
+        if (i > 0 && !(mode == MODE_ASR && gate_high)) {
             // At minimum release levels, traverse the curve at a faster rate than default.
-            (analogRead(P2) > 0) ? i-- : i -= min(i, 10);
+            (hw.p2.Read() > 0) ? i-- : i -= min(i, 10);
         }
         // If looping mode, restart rising
-        if (mode == 3 && i == 0) {
+        if (mode == MODE_LFO && i == 0) {
             attack_end = 0;
         }
     }
 
     // Set envelope cv output according to curve choice.
-    switch (curve) {
-        case 0:
+    switch (read_curve()) {
+        case CURVE_LOG:
             duty = (pgm_read_word(&(LOG[i])));
             break;
 
-        case 1:
+        case CURVE_LINEAR:
             duty = (pgm_read_word(&(LINEAR[i])));
             break;
 
-        case 2:
+        case CURVE_EXP:
             duty = (pgm_read_word(&(EXP[i])));
             break;
     }
 
     // Attack / Release incremental delay time (use Millisecond delay for SLOW AR mode).
     time = (attack_end == 0)
-               ? analogRead(P1)   // Attack knob
-               : analogRead(P2);  // Release knob
+               ? hw.p1.Read()   // Attack knob
+               : hw.p2.Read();  // Release knob
 
     // Short sleep duration before advancing to the next step in the curve table.
-    (mode == 2)
+    (mode == MODE_SLOW)
         ? delay(time / 10)               // Slower milliscond delay for SLOW mode.
         : delayMicroseconds(time * 10);  // Faster microsecond delay by default.
 
     // Write CV Output (scaled down to PWM range of 0 to 255)
-    analogWrite(CV_OUT, map(duty, 0, 1023, 0, 255));
+    hw.output.Update(map(duty, 0, 1000, 0, 255));
 }
 
-void update_mode() {
-    mode = analogRead(P3) >> 8;
+Mode read_mode() {
+    switch (analogRead(P3) >> 8) {
+        case 0:
+            return MODE_AR;
+        case 1:
+            return MODE_ASR;
+        case 2:
+            return MODE_SLOW;
+        case 3:
+            return MODE_LFO;
+    }
 }
 
-void update_curve() {
+Curve read_curve() {
     if (analogRead(P4) <= 341) {
-        curve = 0;  // LOG
+        return CURVE_LOG;
     } else if (analogRead(P4) <= 682) {
-        curve = 1;  // LINEAR
+        return CURVE_LINEAR;
     } else {
-        curve = 2;  // EXP
+        return CURVE_EXP;
     }
 }
