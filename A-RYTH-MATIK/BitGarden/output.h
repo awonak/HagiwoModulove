@@ -2,7 +2,7 @@
 #define OUTPUT_H
 
 // Include the Modulove hardware library.
-#include "src/libmodulove/arythmatik.h"
+#include <arythmatik.h>
 
 using namespace modulove;
 

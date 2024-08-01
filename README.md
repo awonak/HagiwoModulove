@@ -18,16 +18,18 @@ Modulove
 
 ## Firmware Development
 
-### Clone the repo
-
-This repository uses git submodules so there are extra steps to pull down all of the files you'll need.
+### Clone the repo and dependencies
 
 ```shell
+# Clone the HagiwoModulove repository
 $ git clone https://github.com/awonak/HagiwoModulove.git
 # Install libmodulove from GitHub using the arduino cli.
 $ arduino-cli config init
 $ arduino-cli config set library.enable_unsafe_install true
-$ arduino-cli lib install --git-url https://github.com/awonak/libModulove.git         
+$ arduino-cli lib install --git-url https://github.com/awonak/libModulove.git 
+# OR optionally clone libmodulove for local development
+$ git clone https://github.com/awonak/libModulove.git
+$ ln -s `pwd`/libmodulove ~/Arduino/libraries        
 ```
 
 ### Configure Visual Studio Code for your IDE

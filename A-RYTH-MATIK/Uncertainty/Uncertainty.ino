@@ -12,7 +12,7 @@
  */
 
 // Include the Modulove library.
-#include "src/libmodulove/arythmatik.h"
+#include <arythmatik.h>
 
 // Script specific output class.
 #include "output.h"

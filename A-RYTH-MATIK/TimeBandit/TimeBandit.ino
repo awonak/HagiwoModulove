@@ -20,7 +20,7 @@
  * RST: Trigger this input to reset the division counter.
  *
  */
-#include "src/libmodulove/arythmatik.h"
+#include <arythmatik.h>
 
 // Flag for enabling debug print to serial monitoring output.
 // Note: this affects performance and locks LED 4 & 5 on HIGH.

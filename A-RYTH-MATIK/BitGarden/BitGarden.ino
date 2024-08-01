@@ -42,7 +42,7 @@
 #define PERCENT 0x25
 
 // Include the Modulove hardware library.
-#include "src/libmodulove/arythmatik.h"
+#include <arythmatik.h>
 
 // Script specific output class.
 #include "output.h"

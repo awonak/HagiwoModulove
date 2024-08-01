@@ -1,4 +1,8 @@
-#pragma once
+#ifndef OUTPUT_H
+#define OUTPUT_H
+
+// Include the Modulove library.
+#include <arythmatik.h>
 
 using namespace modulove;
 
@@ -85,3 +89,5 @@ class ProbablisticOutput {
 
     inline void low() { output_.Low(); }
 };
+
+#endif
