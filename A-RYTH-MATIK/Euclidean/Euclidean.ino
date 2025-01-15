@@ -44,16 +44,15 @@
 using namespace modulove;
 using namespace arythmatik;
 
-const int MAX_STEPS = 32;
-const int TRIGGER_DURATION_MS = 50;
+const byte MAX_STEPS = 32;
+const byte TRIGGER_DURATION_MS = 50;
 
 // Declare A-RYTH-MATIK hardware variable.
 Arythmatik hw;
 Pattern pattern[OUTPUT_COUNT];
-int counter;
 byte selected_out = 0;
-bool update_display = true;
 long last_clock_input = 0;
+bool update_display = true;
 bool trigger_active = false;
 
 // Enum constants for selecting an editable attribute.
@@ -70,7 +69,6 @@ Parameter selected_param = PARAM_STEPS;
 enum Mode {
     MODE_SELECT,
     MODE_EDIT,
-    // MODE_NONE,
     MODE_LAST,
 };
 Mode selected_mode = MODE_SELECT;
@@ -103,7 +101,7 @@ void loop() {
     // Read cv inputs and process encoder state to determine state for this loop.
     hw.ProcessInputs();
 
-    // Advance the counter on CLK input
+    // Advance the patterns on CLK input
     if (hw.clk.State() == DigitalInput::STATE_RISING) {
         for (int i = 0; i < OUTPUT_COUNT; i++) {
            if (pattern[i].NextStep()) {
@@ -112,7 +110,6 @@ void loop() {
         }
         last_clock_input = millis();
         trigger_active = true;
-        update_display = true;
     }
 
     // Trigger mode: turn off all outputs after trigger duration.
@@ -121,10 +118,9 @@ void loop() {
            hw.outputs[i].Low();
         }
         trigger_active = false;
-        update_display = true;
     } 
 
-    // Reset the clock division counter on RST input.
+    // Reset all patterns to the first pattern step on RST input.
     if (hw.rst.State() == DigitalInput::STATE_RISING) {
         for (int i = 0; i < OUTPUT_COUNT; i++) {
            pattern[i].Reset();
@@ -164,9 +160,11 @@ void UpdateRotate(Encoder::Direction  dir) {
     int val = (dir == Encoder::DIRECTION_INCREMENT) ? 1 : -1;
 
     if (selected_mode == MODE_SELECT) {
-        // TODO: Support wrapping.
-        // Next editable attribute on Main page.
-        selected_param = static_cast<Parameter>((selected_param + val) % PARAM_LAST);
+        if (static_cast<Parameter>(selected_param) == 0 && val == -1) {
+            selected_param = static_cast<Parameter>(PARAM_LAST - 1);
+        } else {
+            selected_param = static_cast<Parameter>((selected_param + val) % PARAM_LAST);
+        }        
     }
     else if (selected_mode == MODE_EDIT) {
         // Handle rotation for current parameter.
@@ -209,7 +207,7 @@ void UpdateDisplay() {
     // Draw page title.
     hw.display.setTextSize(0);
     hw.display.setCursor(37, 0);
-    hw.display.println("EUCLIDEAN");
+    hw.display.println(F("EUCLIDEAN"));
     hw.display.drawFastHLine(0, 10, SCREEN_WIDTH, WHITE);
 
     DisplayMode();
@@ -224,18 +222,18 @@ void DisplayMode() {
     hw.display.setCursor(26, 18);
     hw.display.setTextSize(0);
     if (selected_param == PARAM_CHANNEL) {
-        hw.display.println("Channel");
+        hw.display.println(F("Channel"));
     }
     else if (selected_param == PARAM_STEPS) {
-        hw.display.print("Steps: ");
+        hw.display.print(F("Steps: "));
         hw.display.print(String(pattern[selected_out].steps));
     }
     else if (selected_param == PARAM_HITS) {
-        hw.display.print("Hits: ");
+        hw.display.print(F("Hits: "));
         hw.display.print(String(pattern[selected_out].hits));
     }
     else if (selected_param == PARAM_OFFSET) {
-        hw.display.print("Offset: ");
+        hw.display.print(F("Offset: "));
         hw.display.print(String(pattern[selected_out].offset));
     }
 }
@@ -297,9 +295,12 @@ void DisplayPattern() {
             ? hw.display.fillRect(left, top, boxSize, boxSize, 1)
             : hw.display.drawRect(left, top, boxSize, boxSize, 1);
 
-        if (trigger_active && i == pattern[selected_out].current_step) {
-            hw.display.drawChar(left+1, top, RIGHT_TRIANGLE, 1, 0, 1);
-        }
+        // if (selected_mode == MODE_PLAY) {
+        //     // Draw right arrow on current played step.
+        //     if (trigger_active && i == pattern[selected_out].current_step) {
+        //         hw.display.drawChar(left+1, top, RIGHT_TRIANGLE, 1, 0, 1);
+        //     }
+        // }
 
         // Advance the draw cursors.
         left += boxSize + padding + 1;
