@@ -7,7 +7,7 @@
  *
  * @copyright Copyright (c) 2025
  *
- * ENCODER: 
+ * ENCODER:
  *      Short press to change current Euclidean rhythm attribute for editing.
  *      Long press to change current pattern.
  *
@@ -15,7 +15,7 @@
  *
  * RST: Trigger this input to reset all patterns.
  *
- * TODO: 
+ * TODO:
  *  - fix swapped clk/rst
  *  - fix param select encoder
  *  - add save state
@@ -46,6 +46,7 @@ using namespace arythmatik;
 
 const byte MAX_STEPS = 32;
 const byte TRIGGER_DURATION_MS = 50;
+const byte UI_TRIGGER_DURATION_MS = 200;
 
 // Declare A-RYTH-MATIK hardware variable.
 Arythmatik hw;
@@ -54,6 +55,7 @@ byte selected_out = 0;
 long last_clock_input = 0;
 bool update_display = true;
 bool trigger_active = false;
+bool ui_trigger_active = false;
 
 // Enum constants for selecting an editable attribute.
 enum Parameter {
@@ -61,7 +63,6 @@ enum Parameter {
     PARAM_HITS,
     PARAM_OFFSET,
     // PARAM_PADDING,
-    PARAM_CHANNEL,
     PARAM_LAST,
 };
 Parameter selected_param = PARAM_STEPS;
@@ -74,12 +75,17 @@ enum Mode {
 Mode selected_mode = MODE_SELECT;
 
 void setup() {
-// Only enable Serial monitoring if DEBUG is defined.
-// Note: this affects performance and locks LED 4 & 5 on HIGH.
-// #ifdef DEBUG
+    // Only enable Serial monitoring if DEBUG is defined.
+    // Note: this affects performance and locks LED 4 & 5 on HIGH.
+    // #ifdef DEBUG
     // Serial.begin(9600);
     // Serial.println("DEBUG READY");
-// #endif
+    // #endif
+
+    // Set up encoder parameters
+    hw.eb.setEncoderHandler(UpdateRotate);
+    hw.eb.setClickHandler(UpdatePress);
+    hw.eb.setEncoderPressedHandler(UpdatePressedRotation);
 
     // Initialize the A-RYTH-MATIK peripherials.
     hw.config.ReverseEncoder = true;
@@ -98,101 +104,93 @@ void setup() {
 }
 
 void loop() {
-    // Read cv inputs and process encoder state to determine state for this loop.
+    // Read cv inputs and process encoder state to determine state for this
+    // loop.
     hw.ProcessInputs();
 
     // Advance the patterns on CLK input
     if (hw.clk.State() == DigitalInput::STATE_RISING) {
         for (int i = 0; i < OUTPUT_COUNT; i++) {
-           if (pattern[i].NextStep()) {
+            if (pattern[i].NextStep()) {
                 hw.outputs[i].High();
-           }
+            }
         }
         last_clock_input = millis();
         trigger_active = true;
+        ui_trigger_active = true;
+        update_display = true;
     }
 
-    // Trigger mode: turn off all outputs after trigger duration.
+    // Turn off all outputs after trigger duration.
     if (trigger_active && millis() > last_clock_input + TRIGGER_DURATION_MS) {
         for (int i = 0; i < OUTPUT_COUNT; i++) {
-           hw.outputs[i].Low();
+            hw.outputs[i].Low();
         }
         trigger_active = false;
-    } 
+    }
+
+    // Turn off current step animation after ui trigger duration.
+    if (ui_trigger_active && millis() > last_clock_input + UI_TRIGGER_DURATION_MS) {
+        ui_trigger_active = false;
+        update_display = true;
+    }
 
     // Reset all patterns to the first pattern step on RST input.
     if (hw.rst.State() == DigitalInput::STATE_RISING) {
         for (int i = 0; i < OUTPUT_COUNT; i++) {
-           pattern[i].Reset();
+            pattern[i].Reset();
         }
         update_display = true;
     }
 
-    // Read and handle the encoder button press and rotate events.
-    UpdatePress(hw.encoder.Pressed());
-    UpdateRotate(hw.encoder.Rotate());
-
     // Call update display to refresh the screen if required.
-    UpdateDisplay();
+    if (update_display) UpdateDisplay();
 }
 
-void UpdatePress(Encoder::PressType press) {
-    // Return if no press detected
-    if (press == Encoder::PRESS_NONE) {
-        return;
-    }
-
-    // Short button press. Change attribute.
-    if (press == Encoder::PRESS_SHORT) {
-        // Change current mode.
-        selected_mode = static_cast<Mode>((selected_mode + 1) % MODE_LAST);
-        update_display = true;
-    }
+void UpdatePress(EncoderButton &eb) {
+    // Change current mode.
+    selected_mode = static_cast<Mode>((selected_mode + 1) % MODE_LAST);
+    update_display = true;
 }
 
-void UpdateRotate(Encoder::Direction  dir) {
-    // Return if no rotation detected.
-    if (dir == Encoder::DIRECTION_UNCHANGED) {
-        return;
-    }
-
-    // Convert the direction to an integer equivalent value. 
-    int val = (dir == Encoder::DIRECTION_INCREMENT) ? 1 : -1;
+void UpdateRotate(EncoderButton &eb) {
+    // Convert the direction to an integer equivalent value.
+    int dir = eb.increment() > 0 ? 1 : -1;
 
     if (selected_mode == MODE_SELECT) {
-        if (static_cast<Parameter>(selected_param) == 0 && val == -1) {
+        if (static_cast<Parameter>(selected_param) == 0 && dir < 0) {
             selected_param = static_cast<Parameter>(PARAM_LAST - 1);
         } else {
-            selected_param = static_cast<Parameter>((selected_param + val) % PARAM_LAST);
-        }        
-    }
-    else if (selected_mode == MODE_EDIT) {
+            selected_param = static_cast<Parameter>((selected_param + dir) % PARAM_LAST);
+        }
+    } else if (selected_mode == MODE_EDIT) {
         // Handle rotation for current parameter.
         switch (selected_param) {
             case PARAM_STEPS:
-                pattern[selected_out].ChangeSteps(val);
+                pattern[selected_out].ChangeSteps(dir);
                 break;
             case PARAM_HITS:
-                pattern[selected_out].ChangeHits(val);
+                pattern[selected_out].ChangeHits(dir);
                 break;
             case PARAM_OFFSET:
-                pattern[selected_out].ChangeOffset(val);
-                break;
-            case PARAM_CHANNEL:
-                ChangeSelectedOutput(dir);
+                pattern[selected_out].ChangeOffset(dir);
                 break;
         }
     }
     update_display = true;
 }
 
-void ChangeSelectedOutput(Encoder::Direction dir) {
+void UpdatePressedRotation(EncoderButton &eb) {
+    ChangeSelectedOutput(eb.increment());
+}
+
+void ChangeSelectedOutput(int dir) {
     switch (dir) {
-        case Encoder::DIRECTION_DECREMENT:
+        case -1:
             if (selected_out > 0) --selected_out;
             update_display = true;
             break;
-        case Encoder::DIRECTION_INCREMENT:
+        case 1:
             if (selected_out < OUTPUT_COUNT - 1) ++selected_out;
             update_display = true;
             break;
@@ -214,25 +212,20 @@ void UpdateDisplay() {
     DisplaySelectedMode();
     DisplayChannels();
     DisplayPattern();
-    
+
     hw.display.display();
 }
 
 void DisplayMode() {
     hw.display.setCursor(26, 18);
     hw.display.setTextSize(0);
-    if (selected_param == PARAM_CHANNEL) {
-        hw.display.println(F("Channel"));
-    }
-    else if (selected_param == PARAM_STEPS) {
+    if (selected_param == PARAM_STEPS) {
         hw.display.print(F("Steps: "));
         hw.display.print(String(pattern[selected_out].steps));
-    }
-    else if (selected_param == PARAM_HITS) {
+    } else if (selected_param == PARAM_HITS) {
         hw.display.print(F("Hits: "));
         hw.display.print(String(pattern[selected_out].hits));
-    }
-    else if (selected_param == PARAM_OFFSET) {
+    } else if (selected_param == PARAM_OFFSET) {
         hw.display.print(F("Offset: "));
         hw.display.print(String(pattern[selected_out].offset));
     }
@@ -252,14 +245,14 @@ void DisplaySelectedMode() {
 void DisplayChannels() {
     hw.display.setCursor(4, 20);
     hw.display.setTextSize(2);
-    hw.display.println(String(selected_out+1));
+    hw.display.println(String(selected_out + 1));
 
-    int start = 4;
-    int top = 42;
-    int left = start;
+    int start = 42;
+    int top = start;
+    int left = 4;
     int boxSize = 4;
     int padding = 2;
-    int wrap = 2;
+    int wrap = 3;
 
     for (int i = 1; i <= OUTPUT_COUNT; i++) {
         // Draw box, fill current step.
@@ -268,12 +261,12 @@ void DisplayChannels() {
             : hw.display.drawRect(left, top, boxSize, boxSize, 1);
 
         // Advance the draw cursors.
-        left += boxSize + padding + 1;
+        top += boxSize + padding + 1;
 
         // Wrap the box draw cursor if we hit wrap count.
         if (i % wrap == 0) {
-            top += boxSize + padding;
-            left = start;
+            top = start;
+            left += boxSize + padding;
         }
     }
 }
@@ -295,18 +288,16 @@ void DisplayPattern() {
             ? hw.display.fillRect(left, top, boxSize, boxSize, 1)
             : hw.display.drawRect(left, top, boxSize, boxSize, 1);
 
-        // if (selected_mode == MODE_PLAY) {
-        //     // Draw right arrow on current played step.
-        //     if (trigger_active && i == pattern[selected_out].current_step) {
-        //         hw.display.drawChar(left+1, top, RIGHT_TRIANGLE, 1, 0, 1);
-        //     }
-        // }
+        // Draw right arrow on current played step.
+        if (ui_trigger_active && i == pattern[selected_out].current_step) {
+            hw.display.drawChar(left + 1, top, RIGHT_TRIANGLE, 1, 0, 1);
+        }
 
         // Advance the draw cursors.
         left += boxSize + padding + 1;
 
         // Wrap the box draw cursor if we hit wrap count.
-        if ((i+1) % wrap == 0) {
+        if ((i + 1) % wrap == 0) {
             top += boxSize + padding;
             left = start;
         }

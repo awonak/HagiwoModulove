@@ -37,19 +37,16 @@ class Pattern {
 
     // Advance the euclidean rhythm to the next step in the pattern.
     bool NextStep() {
-        current_step = (current_step < steps-1) ? current_step+1 : 0;
+        current_step = (current_step < steps - 1) ? current_step + 1 : 0;
         return GetStep(current_step);
     }
 
-    bool GetStep(int i) {
-        return (pattern_[i] == 1);
-    }
+    bool GetStep(int i) { return (pattern_[i] == 1); }
 
     void ChangeSteps(int val) {
         if (val == 1 && steps < MAX_PATTERN_LEN) {
             steps++;
-        }
-        else if (val == -1 && steps > 0) {
+        } else if (val == -1 && steps > 0) {
             steps--;
             hits = min(hits, steps);
         }
@@ -59,51 +56,44 @@ class Pattern {
     void ChangeHits(int val) {
         if (val == 1 && hits < steps) {
             hits++;
-        }
-        else if (val == -1 && hits > 1) {
+        } else if (val == -1 && hits > 1) {
             hits--;
         }
         updatePattern();
     }
 
     void ChangeOffset(int val) {
-        // TODO: support wrapping.
-        if (val == 1 && offset < steps) {
+        if (val == 1 && offset < steps - 1) {
             offset++;
-        }
-        else if (val == -1 && offset > 0) {
+        } else if (val == -1 && offset > 0) {
             offset--;
         }
         updatePattern();
     }
 
-    void Reset() {
-        current_step = steps;
-    }
+    void Reset() { current_step = steps; }
 
    private:
     uint8_t pattern_[MAX_PATTERN_LEN];
 
     // Update the euclidean rhythm pattern when attributes change.
     void updatePattern() {
-        // Reset the current step to the last step.
-        current_step = steps;
-
         // Erase current pattern
-        for (int i = 0; i < steps; i++) {
-            pattern_[i] = 0;  
+        for (int i = 0; i < MAX_PATTERN_LEN; i++) {
+            pattern_[i] = 0;
         }
-        
-        // Populate the euclidean rhythm pattern according to the current instance variables.
+
+        // Populate the euclidean rhythm pattern according to the current
+        // instance variables.
         int bucket = 0;
-        pattern_[0] = 1;
-        for(int i = 1; i < steps; i++){
+        pattern_[offset] = 1;
+        for (int i = 1; i < steps; i++) {
             bucket += hits;
-            if(bucket >= steps) {
+            if (bucket >= steps) {
                 bucket -= steps;
-                pattern_[i] = 1;
+                pattern_[(i + offset) % steps] = 1;
             } else {
-                pattern_[i] = 0;
+                pattern_[(i + offset) % steps] = 0;
             }
         }
     }
