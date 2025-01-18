@@ -8,6 +8,12 @@ using namespace modulove;
 
 #define MAX_PATTERN_LEN 32
 
+struct PatternState {
+    uint8_t steps;
+    uint8_t hits;
+    uint8_t offset;
+    uint8_t padding;
+};
 
 class Pattern {
    public:
@@ -22,18 +28,21 @@ class Pattern {
 
     /**
     Initializes the euclidean rhythm pattern with the given attributes.
-      \param output arythmatik cv output.
       \param steps total length of the pattern.
       \param hits the number of "beats" to distribute evenly across the pattern steps.
       \param offset rotation of the pattern's hits.
       \param padding additional empty steps added to the pattern.
     */
-    void Init(int _steps, int _hits, int _offset, int _padding) {
-        steps = _steps;
-        hits = _hits;
-        offset = _offset;
-        padding = _padding;
+    void Init(PatternState state) {
+        steps = state.steps;
+        hits = state.hits;
+        offset = state.offset;
+        padding = state.padding;
         updatePattern();
+    }
+
+    PatternState GetState() {
+        return {steps, hits, offset, padding};
     }
 
     // Advance the euclidean rhythm to the next step in the pattern.
@@ -92,7 +101,7 @@ class Pattern {
 
     // Update the euclidean rhythm pattern when attributes change.
     void updatePattern() {
-        // Fill current pattern with "padding" steps.
+        // Fill current pattern with "padding" steps, then overwrite with hits and rests.
         for (int i = 0; i < MAX_PATTERN_LEN; i++) {
             pattern_[i] = 2;
         }
