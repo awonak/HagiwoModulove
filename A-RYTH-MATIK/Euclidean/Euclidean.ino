@@ -16,12 +16,7 @@
  * RST: Trigger this input to reset all patterns.
  *
  * TODO:
- *  - fix swapped clk/rst
- *  - fix param select encoder
  *  - add save state
- *  - replace E with pencil blit
- *  - implement offset
- *  - implement padding
  */
 
 // Include the Modulove hardware library.
@@ -33,6 +28,12 @@
 // Graphics identifiers
 #define RIGHT_TRIANGLE 0x10
 #define LEFT_TRIANGLE 0x11
+
+// 'pencil', 12x12px
+const unsigned char pencil_gfx [] PROGMEM = {
+	0x00, 0x00, 0x00, 0xc0, 0x01, 0xa0, 0x02, 0x60, 0x04, 0x40, 0x08, 0x80, 0x11, 0x00, 0x22, 0x00, 
+	0x64, 0x00, 0x78, 0x00, 0x70, 0x00, 0x00, 0x00
+};
 
 // Flag for enabling debug print to serial monitoring output.
 // Note: this affects performance and locks LED 4 & 5 on HIGH.
@@ -62,7 +63,7 @@ enum Parameter {
     PARAM_STEPS,
     PARAM_HITS,
     PARAM_OFFSET,
-    // PARAM_PADDING,
+    PARAM_PADDING,
     PARAM_LAST,
 };
 Parameter selected_param = PARAM_STEPS;
@@ -88,11 +89,10 @@ void setup() {
     hw.eb.setEncoderPressedHandler(UpdatePressedRotation);
 
     // Initialize the A-RYTH-MATIK peripherials.
-    hw.config.ReverseEncoder = true;
     hw.Init();
 
     // Initial patterns.
-    pattern[0].Init(11, 7, 0, 0);
+    pattern[0].Init(16, 4, 0, 0);
     pattern[1].Init(16, 4, 0, 0);
     pattern[2].Init(16, 4, 0, 0);
     pattern[3].Init(16, 4, 0, 0);
@@ -175,6 +175,9 @@ void UpdateRotate(EncoderButton &eb) {
             case PARAM_OFFSET:
                 pattern[selected_out].ChangeOffset(dir);
                 break;
+            case PARAM_PADDING:
+                pattern[selected_out].ChangePadding(dir);
+                break;
         }
     }
     update_display = true;
@@ -228,6 +231,9 @@ void DisplayMode() {
     } else if (selected_param == PARAM_OFFSET) {
         hw.display.print(F("Offset: "));
         hw.display.print(String(pattern[selected_out].offset));
+    } else if (selected_param == PARAM_PADDING) {
+        hw.display.print(F("Padding: "));
+        hw.display.print(String(pattern[selected_out].padding));
     }
 }
 
@@ -237,7 +243,7 @@ void DisplaySelectedMode() {
             hw.display.drawChar(116, 18, LEFT_TRIANGLE, 1, 0, 1);
             break;
         case MODE_EDIT:
-            hw.display.drawChar(116, 18, 'E', 1, 0, 1);
+            hw.display.drawBitmap(112, 16, pencil_gfx, 12, 12, 1);
             break;
     }
 }
@@ -251,7 +257,7 @@ void DisplayChannels() {
     int top = start;
     int left = 4;
     int boxSize = 4;
-    int padding = 2;
+    int margin = 2;
     int wrap = 3;
 
     for (int i = 1; i <= OUTPUT_COUNT; i++) {
@@ -261,12 +267,12 @@ void DisplayChannels() {
             : hw.display.drawRect(left, top, boxSize, boxSize, 1);
 
         // Advance the draw cursors.
-        top += boxSize + padding + 1;
+        top += boxSize + margin + 1;
 
         // Wrap the box draw cursor if we hit wrap count.
         if (i % wrap == 0) {
             top = start;
-            left += boxSize + padding;
+            left += boxSize + margin;
         }
     }
 }
@@ -277,16 +283,27 @@ void DisplayPattern() {
     int top = 30;
     int left = start;
     int boxSize = 7;
-    int padding = 2;
+    int margin = 2;
     int wrap = 8;
 
     int steps = pattern[selected_out].steps;
+    int offset = pattern[selected_out].offset;
+    int padding = pattern[selected_out].padding;
 
-    for (int i = 0; i < steps; i++) {
+    for (int i = 0; i < steps + padding; i++) {
         // Draw box, fill current step.
-        (pattern[selected_out].GetStep(i))
-            ? hw.display.fillRect(left, top, boxSize, boxSize, 1)
-            : hw.display.drawRect(left, top, boxSize, boxSize, 1);
+        switch(pattern[selected_out].GetStep(i)) {
+            case 1:
+                hw.display.fillRect(left, top, boxSize, boxSize, 1);
+                break;
+            case 0:
+                hw.display.drawRect(left, top, boxSize, boxSize, 1);
+                break;
+            case 2:
+                hw.display.drawRect(left, top, boxSize, boxSize, 1);
+                hw.display.drawLine(left+boxSize-1, top, left, top+boxSize-1, 1);
+                break;
+        }
 
         // Draw right arrow on current played step.
         if (ui_trigger_active && i == pattern[selected_out].current_step) {
@@ -294,11 +311,11 @@ void DisplayPattern() {
         }
 
         // Advance the draw cursors.
-        left += boxSize + padding + 1;
+        left += boxSize + margin + 1;
 
         // Wrap the box draw cursor if we hit wrap count.
         if ((i + 1) % wrap == 0) {
-            top += boxSize + padding;
+            top += boxSize + margin;
             left = start;
         }
     }

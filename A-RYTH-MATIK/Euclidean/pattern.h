@@ -8,6 +8,7 @@ using namespace modulove;
 
 #define MAX_PATTERN_LEN 32
 
+
 class Pattern {
    public:
     Pattern() {}
@@ -36,16 +37,19 @@ class Pattern {
     }
 
     // Advance the euclidean rhythm to the next step in the pattern.
-    bool NextStep() {
-        current_step = (current_step < steps - 1) ? current_step + 1 : 0;
+    // Returns 1 for hit, 0 for rest, and 2 for padding.
+    int NextStep() {
+        current_step = (current_step < steps + padding - 1) ? current_step + 1 : 0;
         return GetStep(current_step);
     }
 
-    bool GetStep(int i) { return (pattern_[i] == 1); }
+    // Returns 1 for hit, 0 for rest, and 2 for padding.
+    int GetStep(int i) { return pattern_[i]; }
 
     void ChangeSteps(int val) {
         if (val == 1 && steps < MAX_PATTERN_LEN) {
             steps++;
+            padding = min(padding, MAX_PATTERN_LEN - steps);
         } else if (val == -1 && steps > 0) {
             steps--;
             hits = min(hits, steps);
@@ -63,10 +67,20 @@ class Pattern {
     }
 
     void ChangeOffset(int val) {
-        if (val == 1 && offset < steps - 1) {
+        if (val == 1 && offset < (steps + padding) - 1) {
             offset++;
         } else if (val == -1 && offset > 0) {
             offset--;
+        }
+        updatePattern();
+    }
+
+    void ChangePadding(int val) {
+        if (val == 1 && padding + steps < MAX_PATTERN_LEN) {
+            padding++;
+        } else if (val == -1 && padding > 0) {
+            padding--;
+            offset = min(offset, (padding + steps) - 1);
         }
         updatePattern();
     }
@@ -78,9 +92,9 @@ class Pattern {
 
     // Update the euclidean rhythm pattern when attributes change.
     void updatePattern() {
-        // Erase current pattern
+        // Fill current pattern with "padding" steps.
         for (int i = 0; i < MAX_PATTERN_LEN; i++) {
-            pattern_[i] = 0;
+            pattern_[i] = 2;
         }
 
         // Populate the euclidean rhythm pattern according to the current
@@ -91,9 +105,9 @@ class Pattern {
             bucket += hits;
             if (bucket >= steps) {
                 bucket -= steps;
-                pattern_[(i + offset) % steps] = 1;
+                pattern_[(i + offset) % (steps+padding)] = 1;
             } else {
-                pattern_[(i + offset) % steps] = 0;
+                pattern_[(i + offset) % (steps+padding)] = 0;
             }
         }
     }
