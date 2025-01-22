@@ -39,32 +39,32 @@ CV1-6: Gate output with decreasing probability.
 
 {{< encoder_firmware_button hex="A-RYTH-MATIK_BitGarden" buttonText="Flash Bit Garden Firmware" >}}
 
-## Uncertainty
+## Euclidean
 
-Configurable stochastic gate processor. [[source](https://github.com/awonak/HagiwoModulove/tree/main/A-RYTH-MATIK/Uncertainty)]
+Euclidean Rhythms. [[source](https://github.com/awonak/HagiwoModulove/tree/main/A-RYTH-MATIK/Euclidean)]
 
-This firmware is based on the [Olivia Artz Modular's Uncertainty](https://oamodular.org/products/uncertainty).
-Connect a trigger or gate source to the CLK input and the each output will
-mirror that signal according to a decreasing probability. Long press the
-encoder to change trigger modes. `Trig` will simply echo the trigger or
-gate received from the CLK input. `Flip` mode will toggle the output on
-or off upon each new CLK input.
+Configure each output with a Euclidean Rhythm defined by the number of steps,
+the number of hits or beats evenly distributed across the steps, a rotation
+offset of the pattern, and finally rest padding appended to the end of the
+pattern.
 
-{{< youtube SHZaS9hu4qI >}}
+Use the encoder to select which parameter to edit, and click the encoder
+button to chanve between select and edit mode. Hold and rotate the encoder
+to change the selected output channel.
 
 ```yaml
 Encoder:
-     short press: Toggle between selecting an output and editing the outputs probability.
-     long press: Enter Mode edit menu.
+     short press: Toggle between selecting and editing a parameter.
+     hold and rotate: Change selected output channel.
 
-CLK: Provide a gate or trigger for each output to repeat with decreasing
-     probability in each output.
+CLK: Advance the Euclidean Rhythm pattern step for all channels.
 
-CV1-6: Gate output with decreasing probability.
+RST: Trigger this input to restart all patterns.
 
+CV1-6: Trigger output for each Euclidean Rhythm.
 ```
 
-{{< encoder_firmware_button hex="A-RYTH-MATIK_Uncertainty" buttonText="Flash Uncertainty Firmware">}}
+{{< encoder_firmware_button hex="A-RYTH-MATIK_Euclidean" buttonText="Flash Euclidean Firmware" >}}
 
 ## Time Bandit
 
@@ -91,3 +91,30 @@ CV1-6: Configurable binary clock divisions of 2, 4, 8, 16, 32..8192
 ```
 
 {{< encoder_firmware_button hex="A-RYTH-MATIK_TimeBandit" buttonText="Flash Time Bandit Firmware">}}
+
+## Uncertainty
+
+Configurable stochastic gate processor. [[source](https://github.com/awonak/HagiwoModulove/tree/main/A-RYTH-MATIK/Uncertainty)]
+
+This firmware is based on the [Olivia Artz Modular's Uncertainty](https://oamodular.org/products/uncertainty).
+Connect a trigger or gate source to the CLK input and the each output will
+mirror that signal according to a decreasing probability. Long press the
+encoder to change trigger modes. `Trig` will simply echo the trigger or
+gate received from the CLK input. `Flip` mode will toggle the output on
+or off upon each new CLK input.
+
+{{< youtube SHZaS9hu4qI >}}
+
+```yaml
+Encoder:
+     short press: Toggle between selecting an output and editing the outputs probability.
+     long press: Enter Mode edit menu.
+
+CLK: Provide a gate or trigger for each output to repeat with decreasing
+     probability in each output.
+
+CV1-6: Gate output with decreasing probability.
+
+```
+
+{{< encoder_firmware_button hex="A-RYTH-MATIK_Uncertainty" buttonText="Flash Uncertainty Firmware">}}
