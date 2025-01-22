@@ -131,6 +131,10 @@ void setup() {
     hw.config.ReverseEncoder = true;
 #endif
 
+    hw.eb.setClickHandler(HandleShortPress);
+    hw.eb.setLongPressHandler(HandleLongPress);
+    hw.eb.setEncoderHandler(HandleRotate);
+
     // Initialize the A-RYTH-MATIK peripherials.
     hw.Init();
 
@@ -174,24 +178,6 @@ void loop() {
             outputs[i].Off();
         }
     }
-
-    // Read the encoder button press event.
-    Encoder::PressType press = hw.encoder.Pressed();
-
-    // Short button press. Change editable parameter.
-    if (press == Encoder::PRESS_SHORT) {
-        HandleShortPress();
-    }
-    // Long button press. Change menu page.
-    else if (press == Encoder::PRESS_LONG) {
-        HandleLongPress();
-    }
-
-    // Read encoder for a change in direction and update the selected page or
-    // parameter.
-    (page_select)
-        ? UpdatePage(hw.encoder.Rotate())
-        : UpdateParameter(hw.encoder.Rotate());
 
     // Render any new UI changes to the OLED display.
     UpdateDisplay();
@@ -253,7 +239,7 @@ void Reset() {
 }
 
 // Short press handler.
-void HandleShortPress() {
+void HandleShortPress(EncoderButton &eb) {
     // If we are in page select mode, set current page.
     if (page_select) {
         page_select = false;
@@ -293,7 +279,7 @@ void HandleShortPress() {
 
 // Long press handler will toggle between page select mode and parameter edit
 // mode for the current page.
-void HandleLongPress() {
+void HandleLongPress(EncoderButton &eb) {
     // Toggle between menu page select mode.
     if (!page_select) {
         page_select = true;
@@ -308,19 +294,29 @@ void HandleLongPress() {
     update_display = true;
 }
 
+void HandleRotate(EncoderButton &eb) {
+    // Read encoder for a change in direction and update the selected page or
+    // parameter.
+    int dir = eb.increment();
+    (page_select)
+        ? UpdatePage(dir)
+        : UpdateParameter(dir);
+}
+
 // When in select page mode, scroll through menu pages.
-void UpdatePage(Encoder::Direction dir) {
-    if (dir == Encoder::DIRECTION_UNCHANGED)
-        return;
-    else if (dir == Encoder::DIRECTION_INCREMENT && selected_page < PAGE_LAST - 1)
+void UpdatePage(int dir) {
+    if (dir == 1 && selected_page < PAGE_LAST - 1) {
         selected_page = static_cast<MenuPage>((selected_page + 1) % PAGE_LAST);
-    else if (dir == Encoder::DIRECTION_DECREMENT && selected_page > PAGE_MAIN)
+        update_display = true;
+    }
+    else if (dir == -1 && selected_page > PAGE_MAIN) {
         selected_page = static_cast<MenuPage>((selected_page - 1) % PAGE_LAST);
-    update_display = true;
+        update_display = true;
+    }
 }
 
 // Update the current selected parameter with the current movement of the encoder.
-void UpdateParameter(Encoder::Direction dir) {
+void UpdateParameter(int dir) {
     if (selected_page == PAGE_MAIN) {
         if (selected_param == PARAM_SEED) UpdateSeed(dir);
         if (selected_param == PARAM_LENGTH) UpdateLength(dir);
@@ -334,34 +330,27 @@ void UpdateParameter(Encoder::Direction dir) {
 }
 
 // Select seed from the previous seeds in the packet or add new random seed to packet.
-void UpdateSeed(Encoder::Direction dir) {
-    if (dir == Encoder::DIRECTION_UNCHANGED)
-        return;
-    else if (dir == Encoder::DIRECTION_INCREMENT)
-        packet.NextSeed();
-    else if (dir == Encoder::DIRECTION_DECREMENT)
-        packet.PrevSeed();
+void UpdateSeed(int dir) {
+    if (dir == 1) packet.NextSeed();
+    else if (dir == -1) packet.PrevSeed();
     update_display = true;
     state_changed = true;
 }
 
 // Adjust the step length for the given input direction (1=increment, 2=decrement).
-void UpdateLength(Encoder::Direction dir) {
-    if (dir == Encoder::DIRECTION_INCREMENT && state.step_length <= MAX_LENGTH) {
+void UpdateLength(int dir) {
+    if (dir == 1 && state.step_length <= MAX_LENGTH) {
         SetLength(++state.step_length);
-    } else if (dir == Encoder::DIRECTION_DECREMENT && state.step_length >= MIN_LENGTH) {
+    } else if (dir == -1 && state.step_length >= MIN_LENGTH) {
         SetLength(--state.step_length);
     }
 }
 
 // Change the current output mode selection.
-void UpdateMode(Encoder::Direction dir) {
-    if (dir == Encoder::DIRECTION_UNCHANGED) return;
-
-    if (dir == Encoder::DIRECTION_INCREMENT && state.mode < MODE_LAST - 1) {
+void UpdateMode(int dir) {
+    if (dir == 1 && state.mode < MODE_LAST - 1) {
         state.mode = static_cast<Mode>(state.mode + 1);
-
-    } else if (dir == Encoder::DIRECTION_DECREMENT && state.mode > 0) {
+    } else if (dir == -1 && state.mode > 0) {
         state.mode = static_cast<Mode>(state.mode - 1);
     }
     // Update the mode for all outputs.
@@ -372,31 +361,28 @@ void UpdateMode(Encoder::Direction dir) {
     state_changed = true;
 }
 
-void UpdateProbability(Encoder::Direction dir) {
-    if (dir == Encoder::DIRECTION_UNCHANGED) return;
+void UpdateProbability(int dir) {
     if (prob_param == PROB_OUTPUT) UpdateOutput(dir);
     if (prob_param == PROB_PERCENTAGE) UpdatePercentage(dir);
 }
 
-void UpdateOutput(Encoder::Direction dir) {
-    if (dir == Encoder::DIRECTION_INCREMENT && selected_out < OUTPUT_COUNT - 1)
+void UpdateOutput(int dir) {
+    if (dir == 1 && selected_out < OUTPUT_COUNT - 1)
         selected_out++;
-    if (dir == Encoder::DIRECTION_DECREMENT && selected_out > 0)
+    if (dir == -1 && selected_out > 0)
         selected_out--;
     update_display = true;
 }
 
-void UpdatePercentage(Encoder::Direction dir) {
-    if (dir == Encoder::DIRECTION_INCREMENT) outputs[selected_out].IncProb();
-    if (dir == Encoder::DIRECTION_DECREMENT) outputs[selected_out].DecProb();
+void UpdatePercentage(int dir) {
+    if (dir == 1) outputs[selected_out].IncProb();
+    if (dir == -1) outputs[selected_out].DecProb();
     update_display = true;
     state_changed = true;
 }
 
 // Edit the current seed.
-void EditSeed(Encoder::Direction dir) {
-    if (dir == Encoder::DIRECTION_UNCHANGED) return;
-
+void EditSeed(int dir) {
     int change;
     if (seed_index == 0)
         change = 0x1000;
@@ -407,9 +393,9 @@ void EditSeed(Encoder::Direction dir) {
     else if (seed_index == 3)
         change = 0x0001;
 
-    if (dir == Encoder::DIRECTION_INCREMENT)
+    if (dir == 1)
         temp_seed += change;
-    else if (dir == Encoder::DIRECTION_DECREMENT)
+    else if (dir == -1)
         temp_seed -= change;
 
     packet.UpdateSeed(temp_seed);
