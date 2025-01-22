@@ -55,6 +55,10 @@ void setup() {
     Serial.begin(9600);
 #endif
 
+    hw.eb.setClickHandler(ShortPress);
+    hw.eb.setLongPressHandler(LongPress);
+    hw.eb.setEncoderHandler(UpdateParameter);
+
     // Initialize the A-RYTH-MATIK peripherials.
     hw.Init();
 
@@ -96,56 +100,52 @@ void loop() {
         }
     }
 
-    // Read the encoder button press event.
-    Encoder::PressType press = hw.encoder.Pressed();
-
-    // Short button press. Change editable parameter.
-    if (press == Encoder::PRESS_SHORT) {
-        // Next param on Main page.
-        if (selected_page == PAGE_MAIN)
-            selected_param = ++selected_param % PARAM_COUNT;
-
-        update_display = true;
-    }
-
-    // Long button press. Change menu page.
-    if (press == Encoder::PRESS_LONG) {
-        if (selected_page == PAGE_MAIN) {
-            selected_page = PAGE_MODE;
-            selected_param = 2;
-        } else {
-            selected_page = PAGE_MAIN;
-            selected_param = 0;
-        }
-        update_display = true;
-    }
-
-    // Read encoder for a change in direction and update the selected parameter.
-    UpdateParameter(hw.encoder.Rotate());
-
     // Render any new UI changes to the OLED display.
     UpdateDisplay();
 }
 
-void UpdateParameter(Encoder::Direction dir) {
-    if (dir == Encoder::DIRECTION_UNCHANGED) return;
+// Short button press. Change editable parameter.
+void ShortPress(EncoderButton &eb) {
+    // Next param on Main page.
+    if (selected_page == PAGE_MAIN)
+        selected_param = ++selected_param % PARAM_COUNT;
+
+    update_display = true;
+}
+
+// Long button press. Change menu page.
+void LongPress(EncoderButton &eb) {
+    if (selected_page == PAGE_MAIN) {
+        selected_page = PAGE_MODE;
+        selected_param = 2;
+    } else {
+        selected_page = PAGE_MAIN;
+        selected_param = 0;
+    }
+    update_display = true;
+}
+
+// Read encoder for a change in direction and update the selected parameter.
+void UpdateParameter(EncoderButton &eb) {
+    int dir = eb.increment();
     if (selected_param == 0) UpdateOutput(dir);
     if (selected_param == 1) UpdateProb(dir);
     if (selected_param == 2) UpdateMode(dir);
+    update_display = true;
 }
 
-void UpdateOutput(Encoder::Direction dir) {
-    if (dir == Encoder::DIRECTION_INCREMENT && selected_out < OUTPUT_COUNT - 1)
+void UpdateOutput(int dir) {
+    if (dir == 1 && selected_out < OUTPUT_COUNT - 1)
         selected_out++;
-    if (dir == Encoder::DIRECTION_DECREMENT && selected_out > 0)
+    if (dir == -1 && selected_out > 0)
         selected_out--;
     update_display = true;
 }
 
-void UpdateMode(Encoder::Direction dir) {
+void UpdateMode(int dir) {
     Mode newMode;
-    if (dir == Encoder::DIRECTION_INCREMENT) newMode = Mode::FLIP;
-    if (dir == Encoder::DIRECTION_DECREMENT) newMode = Mode::TRIGGER;
+    if (dir == 1) newMode = Mode::FLIP;
+    if (dir == -1) newMode = Mode::TRIGGER;
     // Update the mode for all outputs.
     for (int i = 0; i < OUTPUT_COUNT; i++) {
         outputs[i].SetMode(newMode);
@@ -153,9 +153,9 @@ void UpdateMode(Encoder::Direction dir) {
     update_display = true;
 }
 
-void UpdateProb(Encoder::Direction dir) {
-    if (dir == Encoder::DIRECTION_INCREMENT) outputs[selected_out].IncProb();
-    if (dir == Encoder::DIRECTION_DECREMENT) outputs[selected_out].DecProb();
+void UpdateProb(int dir) {
+    if (dir == 1) outputs[selected_out].IncProb();
+    if (dir == -1) outputs[selected_out].DecProb();
     update_display = true;
 }
 
