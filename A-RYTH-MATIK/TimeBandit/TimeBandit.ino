@@ -66,6 +66,10 @@ void setup() {
     // Initialize the A-RYTH-MATIK peripherials.
     hw.Init();
 
+    // Set up encoder parameters
+    hw.eb.setEncoderHandler(UpdateRotate);
+    hw.eb.setClickHandler(UpdatePress);
+
     // Define each of the fixed clock divisions.
     // NOTE: This is binary value, clock divisions are bit shifted left by one.
     clockDiv[0] = {hw.outputs[0], 1};
@@ -99,28 +103,24 @@ void loop() {
         counter = 0;
     }
 
-    // Read the encoder button press event.
-    Encoder::PressType press = hw.encoder.Pressed();
-
-    // Short button press. Change mode.
-    if (press == Encoder::PRESS_SHORT) {
-        // Next param on Main page.
-        selected_mode = static_cast<Mode>((selected_mode + 1) % MODE_LAST);
-        update_display = true;
-    }
-
-    UpdateParameter(hw.encoder.Rotate());
     UpdateDisplay();
 }
 
-void UpdateParameter(Encoder::Direction dir) {
+void UpdatePress(EncoderButton &eb) {
+    // Next param on Main page.
+    selected_mode = static_cast<Mode>((selected_mode + 1) % MODE_LAST);
+    update_display = true;
+}
+
+void UpdateRotate(EncoderButton &eb) {
+    int dir = eb.increment() > 0 ? 1 : -1;
     if (selected_mode == MODE_SELECT) {
         switch (dir) {
-            case Encoder::DIRECTION_DECREMENT:
+            case -1:
                 if (selected_out > 0) --selected_out;
                 update_display = true;
                 break;
-            case Encoder::DIRECTION_INCREMENT:
+            case 1:
                 if (selected_out < OUTPUT_COUNT - 1) ++selected_out;
                 update_display = true;
                 break;
@@ -129,14 +129,14 @@ void UpdateParameter(Encoder::Direction dir) {
     if (selected_mode == MODE_EDIT) {
         int division = clockDiv[selected_out].division;
         switch (dir) {
-            case Encoder::DIRECTION_DECREMENT:
+            case -1:
                 if (division > 1) {
                     clockDiv[selected_out].division = division >> 1;
                     counter = 0;
                     update_display = true;
                 }
                 break;
-            case Encoder::DIRECTION_INCREMENT:
+            case 1:
                 if (division < 4096) {
                     clockDiv[selected_out].division = division << 1;
                     counter = 0;
