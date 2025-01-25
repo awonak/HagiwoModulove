@@ -33,7 +33,7 @@
 // #define ROTATE_PANEL
 
 // Flag for reversing the encoder direction.
-#define ENCODER_REVERSED
+// #define ENCODER_REVERSED
 
 // Graphics identifiers
 #define RIGHT_TRIANGLE 0x10

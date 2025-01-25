@@ -38,6 +38,9 @@ const unsigned char pencil_gfx [] PROGMEM = {
 // Note: this affects performance and locks LED 4 & 5 on HIGH.
 // #define DEBUG
 
+// Flag for rotating the panel 180 degrees.
+// #define ROTATE_PANEL
+
 // Flag for reversing the encoder direction.
 // #define ENCODER_REVERSED
 
