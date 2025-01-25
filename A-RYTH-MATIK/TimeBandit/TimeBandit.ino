@@ -113,14 +113,13 @@ void UpdatePress(EncoderButton &eb) {
 }
 
 void UpdateRotate(EncoderButton &eb) {
-    int dir = eb.increment() > 0 ? 1 : -1;
     if (selected_mode == MODE_SELECT) {
-        switch (dir) {
-            case -1:
+        switch (hw.EncoderDirection()) {
+            case DIRECTION_DECREMENT:
                 if (selected_out > 0) --selected_out;
                 update_display = true;
                 break;
-            case 1:
+            case DIRECTION_INCREMENT:
                 if (selected_out < OUTPUT_COUNT - 1) ++selected_out;
                 update_display = true;
                 break;
@@ -128,15 +127,15 @@ void UpdateRotate(EncoderButton &eb) {
     }
     if (selected_mode == MODE_EDIT) {
         int division = clockDiv[selected_out].division;
-        switch (dir) {
-            case -1:
+        switch (hw.EncoderDirection()) {
+            case DIRECTION_DECREMENT:
                 if (division > 1) {
                     clockDiv[selected_out].division = division >> 1;
                     counter = 0;
                     update_display = true;
                 }
                 break;
-            case 1:
+            case DIRECTION_INCREMENT:
                 if (division < 4096) {
                     clockDiv[selected_out].division = division << 1;
                     counter = 0;

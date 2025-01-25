@@ -127,7 +127,8 @@ void LongPress(EncoderButton &eb) {
 
 // Read encoder for a change in direction and update the selected parameter.
 void UpdateParameter(EncoderButton &eb) {
-    int dir = eb.increment();
+    // Convert the configured encoder direction to an integer equivalent value.
+    int dir = hw.EncoderDirection() == DIRECTION_INCREMENT ? 1 : -1;
     if (selected_param == 0) UpdateOutput(dir);
     if (selected_param == 1) UpdateProb(dir);
     if (selected_param == 2) UpdateMode(dir);
