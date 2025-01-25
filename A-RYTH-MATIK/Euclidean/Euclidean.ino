@@ -39,7 +39,7 @@ const unsigned char pencil_gfx [] PROGMEM = {
 // #define DEBUG
 
 // Flag for reversing the encoder direction.
-#define ENCODER_REVERSED
+// #define ENCODER_REVERSED
 
 using namespace modulove;
 using namespace arythmatik;
