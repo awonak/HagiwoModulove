@@ -26,6 +26,9 @@
 // Note: this affects performance and locks LED 4 & 5 on HIGH.
 // #define DEBUG
 
+// Flag for rotating the panel 180 degrees.
+// #define ROTATE_PANEL
+
 // Flag for reversing the encoder direction.
 // #define ENCODER_REVERSED
 
@@ -60,7 +63,15 @@ void setup() {
 // Only enable Serial monitoring if DEBUG is defined.
 // Note: this affects performance and locks LED 4 & 5 on HIGH.
 #ifdef DEBUG
-    Serial.begin(57600);
+    Serial.begin(115200);
+#endif
+
+#ifdef ROTATE_PANEL
+    hw.config.RotatePanel = true;
+#endif
+
+#ifdef ENCODER_REVERSED
+    hw.config.ReverseEncoder = true;
 #endif
 
     // Initialize the A-RYTH-MATIK peripherials.
@@ -113,14 +124,13 @@ void UpdatePress(EncoderButton &eb) {
 }
 
 void UpdateRotate(EncoderButton &eb) {
-    int dir = eb.increment() > 0 ? 1 : -1;
     if (selected_mode == MODE_SELECT) {
-        switch (dir) {
-            case -1:
+        switch (hw.EncoderDirection()) {
+            case DIRECTION_DECREMENT:
                 if (selected_out > 0) --selected_out;
                 update_display = true;
                 break;
-            case 1:
+            case DIRECTION_INCREMENT:
                 if (selected_out < OUTPUT_COUNT - 1) ++selected_out;
                 update_display = true;
                 break;
@@ -128,15 +138,15 @@ void UpdateRotate(EncoderButton &eb) {
     }
     if (selected_mode == MODE_EDIT) {
         int division = clockDiv[selected_out].division;
-        switch (dir) {
-            case -1:
+        switch (hw.EncoderDirection()) {
+            case DIRECTION_DECREMENT:
                 if (division > 1) {
                     clockDiv[selected_out].division = division >> 1;
                     counter = 0;
                     update_display = true;
                 }
                 break;
-            case 1:
+            case DIRECTION_INCREMENT:
                 if (division < 4096) {
                     clockDiv[selected_out].division = division << 1;
                     counter = 0;

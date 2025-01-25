@@ -38,6 +38,9 @@ const unsigned char pencil_gfx [] PROGMEM = {
 // Note: this affects performance and locks LED 4 & 5 on HIGH.
 // #define DEBUG
 
+// Flag for rotating the panel 180 degrees.
+// #define ROTATE_PANEL
+
 // Flag for reversing the encoder direction.
 // #define ENCODER_REVERSED
 
@@ -75,12 +78,19 @@ enum Mode {
 Mode selected_mode = MODE_SELECT;
 
 void setup() {
-    // Only enable Serial monitoring if DEBUG is defined.
-    // Note: this affects performance and locks LED 4 & 5 on HIGH.
-    // #ifdef DEBUG
-    // Serial.begin(9600);
-    // Serial.println("DEBUG READY");
-    // #endif
+// Only enable Serial monitoring if DEBUG is defined.
+// Note: this affects performance and locks LED 4 & 5 on HIGH.
+#ifdef DEBUG
+    Serial.begin(115200);
+#endif
+    
+#ifdef ROTATE_PANEL
+    hw.config.RotatePanel = true;
+#endif
+
+#ifdef ENCODER_REVERSED
+    hw.config.ReverseEncoder = true;
+#endif
 
     // Set up encoder parameters
     hw.eb.setEncoderHandler(UpdateRotate);
@@ -153,8 +163,8 @@ void UpdatePress(EncoderButton &eb) {
 }
 
 void UpdateRotate(EncoderButton &eb) {
-    // Convert the direction to an integer equivalent value.
-    int dir = eb.increment() > 0 ? 1 : -1;
+    // Convert the configured encoder direction to an integer equivalent value.
+    int dir = hw.EncoderDirection() == DIRECTION_INCREMENT ? 1 : -1;
 
     if (selected_mode == MODE_SELECT) {        
         if (static_cast<Parameter>(selected_param) == 0 && dir < 0) {
@@ -183,16 +193,16 @@ void UpdateRotate(EncoderButton &eb) {
 }
 
 void UpdatePressedRotation(EncoderButton &eb) {
-    ChangeSelectedOutput(eb.increment());
+    ChangeSelectedOutput(hw.EncoderDirection());
 }
 
-void ChangeSelectedOutput(int dir) {
+void ChangeSelectedOutput(Direction dir) {
     switch (dir) {
-        case -1:
+        case DIRECTION_DECREMENT:
             if (selected_out > 0) --selected_out;
             update_display = true;
             break;
-        case 1:
+        case DIRECTION_INCREMENT:
             if (selected_out < OUTPUT_COUNT - 1) ++selected_out;
             update_display = true;
             break;

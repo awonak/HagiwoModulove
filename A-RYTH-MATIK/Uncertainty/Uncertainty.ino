@@ -21,8 +21,11 @@
 // Note: this affects performance and locks LED 4 & 5 on HIGH.
 // #define DEBUG
 
+// Flag for rotating the panel 180 degrees.
+// #define ROTATE_PANEL
+
 // Flag for reversing the encoder direction.
-//#define ENCODER_REVERSED
+// #define ENCODER_REVERSED
 
 using namespace modulove;
 using namespace arythmatik;
@@ -52,7 +55,15 @@ void setup() {
 // Only enable Serial monitoring if DEBUG is defined.
 // Note: this affects performance and locks LED 4 & 5 on HIGH.
 #ifdef DEBUG
-    Serial.begin(9600);
+    Serial.begin(115200);
+#endif
+
+#ifdef ROTATE_PANEL
+    hw.config.RotatePanel = true;
+#endif
+
+#ifdef ENCODER_REVERSED
+    hw.config.ReverseEncoder = true;
 #endif
 
     hw.eb.setClickHandler(ShortPress);
@@ -127,7 +138,8 @@ void LongPress(EncoderButton &eb) {
 
 // Read encoder for a change in direction and update the selected parameter.
 void UpdateParameter(EncoderButton &eb) {
-    int dir = eb.increment();
+    // Convert the configured encoder direction to an integer equivalent value.
+    int dir = hw.EncoderDirection() == DIRECTION_INCREMENT ? 1 : -1;
     if (selected_param == 0) UpdateOutput(dir);
     if (selected_param == 1) UpdateProb(dir);
     if (selected_param == 2) UpdateMode(dir);
