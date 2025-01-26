@@ -46,6 +46,8 @@ class Pattern {
     // Advance the euclidean rhythm to the next step in the pattern.
     // Returns 1 for hit, 0 for rest, and 2 for padding.
     int NextStep() {
+        if (steps == 0) return 0;
+        
         current_step =
             (current_step < steps + padding - 1) ? current_step + 1 : 0;
         return GetStep(current_step);
