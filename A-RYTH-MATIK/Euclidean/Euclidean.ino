@@ -54,13 +54,13 @@ const byte UI_TRIGGER_DURATION_MS = 200;
 // Declare A-RYTH-MATIK hardware variable.
 Arythmatik hw;
 Pattern patterns[OUTPUT_COUNT];
-long last_clock_input = 0;
 bool state_changed = false;
-bool trigger_active = false;
 
-// State variables for tracking OLED and editable parameter changes.
-bool ui_trigger_active = false;
-bool update_display = true;
+// State variables that may be changed inside ISR must be volatile.
+volatile unsigned long last_clock_input = 0;
+volatile bool update_display = true;
+volatile bool trigger_active = false;
+volatile bool ui_trigger_active = false;
 
 // Enum constants for selecting an editable attribute.
 enum Parameter {
@@ -105,6 +105,15 @@ void setup() {
     hw.config.ReverseEncoder = true;
 #endif
 
+    // Thanks to Sitka Instruments for the tip and docs from https://dronebotworkshop.com/interrupts/
+    // Set CLK pin as input with pullup
+    pinMode(CLK_PIN, INPUT_PULLUP);
+    // Enable PCIE0 Bit0 = 1 (Port B)
+    PCICR |= B00000001;
+    // Select PCINT5 Bit5 = 1 (Pin 13)
+    PCMSK0 |= B00100000;
+    // ISR (PCINT0_vect) - ISR for Port B (D8 - D13)
+
     // Set up encoder parameters
     hw.eb.setEncoderHandler(HandleRotate);
     hw.eb.setClickHandler(HandlePress);
@@ -125,19 +134,6 @@ void loop() {
     // Read cv inputs and process encoder state to determine state for this
     // loop.
     hw.ProcessInputs();
-
-    // Advance the patterns on CLK input
-    if (hw.clk.State() == DigitalInput::STATE_RISING) {
-        for (int i = 0; i < OUTPUT_COUNT; i++) {
-            if (patterns[i].NextStep() == 1) {
-                hw.outputs[i].High();
-            }
-        }
-        last_clock_input = millis();
-        trigger_active = true;
-        ui_trigger_active = true;
-        update_display = true;
-    }
 
     // Turn off all outputs after trigger duration.
     if (trigger_active && millis() > last_clock_input + TRIGGER_DURATION_MS) {
@@ -169,6 +165,22 @@ void loop() {
 
     // Call update display to refresh the screen if required.
     if (update_display) UpdateDisplay();
+}
+
+// Pin Change Interrupt on Port B (D13).
+ISR (PCINT0_vect) {
+    // Advance the patterns on CLK input
+    if (digitalRead(CLK_PIN) == HIGH) {
+        for (int i = 0; i < OUTPUT_COUNT; i++) {
+            if (patterns[i].NextStep() == 1) {
+                hw.outputs[i].High();
+            }
+        }
+        last_clock_input = millis();
+        trigger_active = true;
+        ui_trigger_active = true;
+        update_display = true;
+    }
 }
 
 void HandlePress(EncoderButton &eb) {
