@@ -42,7 +42,7 @@ const unsigned char pencil_gfx [] PROGMEM = {
 // #define ROTATE_PANEL
 
 // Flag for reversing the encoder direction.
-// #define ENCODER_REVERSED
+#define ENCODER_REVERSED
 
 using namespace modulove;
 using namespace arythmatik;
@@ -54,11 +54,13 @@ const byte UI_TRIGGER_DURATION_MS = 200;
 // Declare A-RYTH-MATIK hardware variable.
 Arythmatik hw;
 Pattern patterns[OUTPUT_COUNT];
-byte selected_out = 0;
 long last_clock_input = 0;
-bool update_display = true;
+bool state_changed = false;
 bool trigger_active = false;
+
+// State variables for tracking OLED and editable parameter changes.
 bool ui_trigger_active = false;
+bool update_display = true;
 
 // Enum constants for selecting an editable attribute.
 enum Parameter {
@@ -66,16 +68,27 @@ enum Parameter {
     PARAM_HITS,
     PARAM_OFFSET,
     PARAM_PADDING,
-    PARAM_LAST,
+    PARAM_NONE,
 };
 Parameter selected_param = PARAM_STEPS;
 
-enum Mode {
-    MODE_SELECT,
-    MODE_EDIT,
-    MODE_LAST,
+enum UIMode {
+    UIMODE_SELECT,
+    UIMODE_EDIT,
+    UIMODE_PAGE,
+    UIMODE_LAST,
 };
-Mode selected_mode = MODE_SELECT;
+UIMode selected_mode = UIMODE_SELECT;
+
+// Enum constants for current display page.
+enum MenuPage {
+    PAGE_MAIN,
+    PAGE_MODE,
+    PAGE_CLOCK,
+    PAGE_LAST,
+};
+MenuPage selected_page = PAGE_MAIN;
+
 
 void setup() {
 // Only enable Serial monitoring if DEBUG is defined.
@@ -93,9 +106,10 @@ void setup() {
 #endif
 
     // Set up encoder parameters
-    hw.eb.setEncoderHandler(UpdateRotate);
-    hw.eb.setClickHandler(UpdatePress);
-    hw.eb.setEncoderPressedHandler(UpdatePressedRotation);
+    hw.eb.setEncoderHandler(HandleRotate);
+    hw.eb.setClickHandler(HandlePress);
+    hw.eb.setLongPressHandler(HandleLongPress);
+    hw.eb.setEncoderPressedHandler(HandlePressedRotation);
 
     // Initialize the A-RYTH-MATIK peripherials.
     hw.Init();
@@ -147,63 +161,152 @@ void loop() {
         update_display = true;
     }
 
+    // If state has changed, write changes to memory.
+    if (state_changed) {
+        SaveChanges(patterns);
+        state_changed = false;
+    }
+
     // Call update display to refresh the screen if required.
     if (update_display) UpdateDisplay();
 }
 
-void UpdatePress(EncoderButton &eb) {
-    // If leaving EDIT mode, save state.
-    if (selected_mode == MODE_EDIT) {
-        SaveChanges(patterns);
-    }
+void HandlePress(EncoderButton &eb) {
 
-    // Change current mode.
-    selected_mode = static_cast<Mode>((selected_mode + 1) % MODE_LAST);
+    switch (selected_mode) {
+    case UIMODE_PAGE:
+        selected_mode = UIMODE_SELECT;
+        update_display = true;
+        break;
+
+    case UIMODE_EDIT:
+        switch (selected_page) {
+        case PAGE_MAIN:
+            // If leaving EDIT mode, save state.
+            selected_mode = UIMODE_SELECT;
+            state_changed = true;
+            update_display = true;
+            break;
+        }
+        break;
+
+    case UIMODE_SELECT:
+        switch (selected_page) {
+        case PAGE_MAIN:
+            selected_mode = UIMODE_EDIT;
+            update_display = true;
+            break;
+        case PAGE_MODE:
+            selected_page = PAGE_MAIN;
+            selected_mode = UIMODE_SELECT;
+            update_display = true;
+            break;
+        }
+        break;
+    }
+}
+
+// Long press handler will toggle between page select mode and parameter edit
+// mode for the current page.
+void HandleLongPress(EncoderButton &eb) {
+    // Toggle between menu page select mode.
+    selected_mode = (selected_mode == UIMODE_PAGE) 
+        ? UIMODE_SELECT
+        : UIMODE_PAGE;
     update_display = true;
 }
 
-void UpdateRotate(EncoderButton &eb) {
-    // Convert the configured encoder direction to an integer equivalent value.
-    int dir = hw.EncoderDirection() == DIRECTION_INCREMENT ? 1 : -1;
+void HandleRotate(EncoderButton &eb) {
+    // Read encoder for a change in direction and update the selected page or
+    // parameter.
+    Direction dir = hw.EncoderDirection();
+    if (selected_mode == UIMODE_PAGE) {
+        UpdatePage(dir);
+        return;
+    }
+    switch (selected_page) {
+    case PAGE_MAIN:
+        UpdateParameter(dir);
+        break;
+    case PAGE_MODE:
+        UpdateMode(dir);
+        break;
+    }
+}
 
-    if (selected_mode == MODE_SELECT) {        
-        if (static_cast<Parameter>(selected_param) == 0 && dir < 0) {
-            selected_param = static_cast<Parameter>(PARAM_LAST - 1);
+// When in select page mode, scroll through menu pages.
+void UpdatePage(Direction dir) {
+    if (dir == DIRECTION_INCREMENT && selected_page < PAGE_LAST - 1) {
+        selected_page = static_cast<MenuPage>((selected_page + 1) % PAGE_LAST);
+        update_display = true;
+    }
+    else if (dir == DIRECTION_DECREMENT && selected_page > PAGE_MAIN) {
+        selected_page = static_cast<MenuPage>((selected_page - 1) % PAGE_LAST);
+        update_display = true;
+    }
+}
+
+void UpdateParameter(Direction dir) {
+    // Convert the configured encoder direction to an integer equivalent value.
+    int val = dir == DIRECTION_INCREMENT ? 1 : -1;
+
+    switch (selected_mode) {
+    case UIMODE_SELECT:
+        if (static_cast<Parameter>(selected_param) == 0 && val < 0) {
+            selected_param = static_cast<Parameter>(PARAM_NONE - 1);
         } else {
-            selected_param = static_cast<Parameter>((selected_param + dir) % PARAM_LAST);
+            selected_param = static_cast<Parameter>((selected_param + val) % PARAM_NONE);
         }
-    } else if (selected_mode == MODE_EDIT) {
+        break;
+    
+    case UIMODE_EDIT:
         // Handle rotation for current parameter.
         switch (selected_param) {
-            case PARAM_STEPS:
-                patterns[selected_out].ChangeSteps(dir);
-                break;
-            case PARAM_HITS:
-                patterns[selected_out].ChangeHits(dir);
-                break;
-            case PARAM_OFFSET:
-                patterns[selected_out].ChangeOffset(dir);
-                break;
-            case PARAM_PADDING:
-                patterns[selected_out].ChangePadding(dir);
-                break;
+        case PARAM_STEPS:
+            patterns[state.selected_out].ChangeSteps(val);
+            break;
+        case PARAM_HITS:
+            patterns[state.selected_out].ChangeHits(val);
+            break;
+        case PARAM_OFFSET:
+            patterns[state.selected_out].ChangeOffset(val);
+            break;
+        case PARAM_PADDING:
+            patterns[state.selected_out].ChangePadding(val);
+            break;
         }
+        break;
     }
     update_display = true;
 }
 
-void UpdatePressedRotation(EncoderButton &eb) {
+// Change the current output mode selection.
+void UpdateMode(Direction dir) {
+    if (dir == DIRECTION_INCREMENT && state.output_mode < OUTPUTMODE_LAST - 1) {
+        state.output_mode = static_cast<OutputMode>(state.output_mode + 1);
+    } else if (dir == DIRECTION_DECREMENT && state.output_mode > 0) {
+        state.output_mode = static_cast<OutputMode>(state.output_mode - 1);
+    }
+    // Update the mode for all outputs.
+    for (int i = 0; i < OUTPUT_COUNT; i++) {
+        // outputs[i].SetMode(state.output_mode);
+    }
+    update_display = true;
+    state_changed = true;
+}
+
+void HandlePressedRotation(EncoderButton &eb) {
     ChangeSelectedOutput(hw.EncoderDirection());
 }
 
 void ChangeSelectedOutput(Direction dir) {
     switch (dir) {
         case DIRECTION_DECREMENT:
-            if (selected_out > 0) --selected_out;
+            if (state.selected_out > 0) --state.selected_out;
             update_display = true;
             break;
         case DIRECTION_INCREMENT:
-            if (selected_out < OUTPUT_COUNT - 1) ++selected_out;
+            if (state.selected_out < OUTPUT_COUNT - 1) ++state.selected_out;
             update_display = true;
             break;
     }
@@ -213,46 +316,69 @@ void UpdateDisplay() {
     if (!update_display) return;
     update_display = false;
     hw.display.clearDisplay();
+    DisplaySelectedUIMode();
 
-    // Draw page title.
-    hw.display.setTextSize(0);
-    hw.display.setCursor(37, 0);
-    hw.display.println(F("EUCLIDEAN"));
-    hw.display.drawFastHLine(0, 10, SCREEN_WIDTH, WHITE);
-
-    DisplayMode();
-    DisplaySelectedMode();
-    DisplayChannels();
-    DisplayPattern();
-
+    switch (selected_page) {
+        case PAGE_MAIN:
+            DisplayMainPage();
+            break;
+        case PAGE_MODE:
+            DisplayOutputModePage();
+            break;
+        case PAGE_CLOCK:
+            DisplayClockPage();
+            break;
+    }
     hw.display.display();
 }
 
-void DisplayMode() {
+// Page title centered within 10 characters.
+void PageTitle(char *title) {
+    hw.display.setTextSize(0);
+    hw.display.setCursor(32, 0);
+    hw.display.println(title);
+    hw.display.drawFastHLine(0, 10, SCREEN_WIDTH, WHITE);
+}
+
+void DisplayMainPage() {
+    PageTitle(" EUCLIDEAN");
+    DisplayParam();
+    DisplayChannels();
+    DisplayPattern();
+}
+
+void DisplayParam() {
     hw.display.setCursor(26, 18);
     hw.display.setTextSize(0);
     if (selected_param == PARAM_STEPS) {
         hw.display.print(F("Steps: "));
-        hw.display.print(String(patterns[selected_out].steps));
+        hw.display.print(patterns[state.selected_out].steps);
     } else if (selected_param == PARAM_HITS) {
         hw.display.print(F("Hits: "));
-        hw.display.print(String(patterns[selected_out].hits));
+        hw.display.print(patterns[state.selected_out].hits);
     } else if (selected_param == PARAM_OFFSET) {
         hw.display.print(F("Offset: "));
-        hw.display.print(String(patterns[selected_out].offset));
+        hw.display.print(patterns[state.selected_out].offset);
     } else if (selected_param == PARAM_PADDING) {
         hw.display.print(F("Padding: "));
-        hw.display.print(String(patterns[selected_out].padding));
+        hw.display.print(patterns[state.selected_out].padding);
     }
 }
 
-void DisplaySelectedMode() {
+void DisplaySelectedUIMode() {
     switch (selected_mode) {
-        case MODE_SELECT:
-            hw.display.drawChar(116, 18, LEFT_TRIANGLE, 1, 0, 1);
+        case UIMODE_SELECT:
+            if (selected_page == PAGE_MAIN) {
+                hw.display.drawChar(116, 18, LEFT_TRIANGLE, 1, 0, 1);
+            } else if (selected_page == PAGE_MODE) {
+                hw.display.drawBitmap(112, 16, pencil_gfx, 12, 12, 1);
+            }
             break;
-        case MODE_EDIT:
+        case UIMODE_EDIT:
             hw.display.drawBitmap(112, 16, pencil_gfx, 12, 12, 1);
+            break;
+        case UIMODE_PAGE:
+            hw.display.drawChar(116, 0, LEFT_TRIANGLE, 1, 0, 1);
             break;
     }
 }
@@ -260,7 +386,7 @@ void DisplaySelectedMode() {
 void DisplayChannels() {
     hw.display.setCursor(4, 20);
     hw.display.setTextSize(2);
-    hw.display.println(String(selected_out + 1));
+    hw.display.println(state.selected_out + 1);
 
     int start = 42;
     int top = start;
@@ -271,7 +397,7 @@ void DisplayChannels() {
 
     for (int i = 1; i <= OUTPUT_COUNT; i++) {
         // Draw box, fill current step.
-        (i == selected_out + 1)
+        (i == state.selected_out + 1)
             ? hw.display.fillRect(left, top, boxSize, boxSize, 1)
             : hw.display.drawRect(left, top, boxSize, boxSize, 1);
 
@@ -295,13 +421,13 @@ void DisplayPattern() {
     int margin = 2;
     int wrap = 8;
 
-    int steps = patterns[selected_out].steps;
-    int offset = patterns[selected_out].offset;
-    int padding = patterns[selected_out].padding;
+    int steps = patterns[state.selected_out].steps;
+    int offset = patterns[state.selected_out].offset;
+    int padding = patterns[state.selected_out].padding;
 
     for (int i = 0; i < steps + padding; i++) {
         // Draw box, fill current step.
-        switch(patterns[selected_out].GetStep(i)) {
+        switch(patterns[state.selected_out].GetStep(i)) {
             case 1:
                 hw.display.fillRect(left, top, boxSize, boxSize, 1);
                 break;
@@ -315,7 +441,7 @@ void DisplayPattern() {
         }
 
         // Draw right arrow on current played step.
-        if (ui_trigger_active && i == patterns[selected_out].current_step) {
+        if (ui_trigger_active && i == patterns[state.selected_out].current_step) {
             hw.display.drawChar(left + 1, top, RIGHT_TRIANGLE, 1, 0, 1);
         }
 
@@ -328,4 +454,33 @@ void DisplayPattern() {
             left = start;
         }
     }
+}
+
+
+void DisplayOutputModePage() {
+    PageTitle("OUTPUT MODE");
+    // Draw output modes
+    (state.output_mode == TRIGGER)
+        ? hw.display.fillRect(12, 20, 8, 8, 1)
+        : hw.display.drawRect(12, 20, 8, 8, 1);
+
+    (state.output_mode == GATE)
+        ? hw.display.fillRect(12, 32, 8, 8, 1)
+        : hw.display.drawRect(12, 32, 8, 8, 1);
+
+    (state.output_mode == FLIP)
+        ? hw.display.fillRect(12, 44, 8, 8, 1)
+        : hw.display.drawRect(12, 44, 8, 8, 1);
+
+    hw.display.setCursor(32, 20);
+    hw.display.println(F("Trig Mode"));
+    hw.display.setCursor(32, 32);
+    hw.display.println(F("Gate Mode"));
+    hw.display.setCursor(32, 46);
+    hw.display.println(F("Flip Mode"));
+}
+
+void DisplayClockPage() {
+    PageTitle("   CLOCK  ");
+
 }
