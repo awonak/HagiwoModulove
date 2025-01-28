@@ -14,8 +14,13 @@
  * CLK: Clock input used to advance the patterns.
  *
  * RST: Trigger this input to reset all patterns.
+ * 
+ * TODO:
+ *  - Fix timer based lag from UI input (try interrupt based library instead)
+ *  - fix display artifacts
  *
  */
+#include <arduino-timer.h>
 
 // Include the Modulove hardware library.
 #include <arythmatik.h>
@@ -51,10 +56,17 @@ const byte MAX_STEPS = 32;
 const byte TRIGGER_DURATION_MS = 50;
 const byte UI_TRIGGER_DURATION_MS = 200;
 
+const int MAX_TEMPO = 300;
+const int MIN_TEMPO = 20;
+
+// Global timer for internal clock.
+Timer<1, micros> u_timer;
+
 // Declare A-RYTH-MATIK hardware variable.
 Arythmatik hw;
 Pattern patterns[OUTPUT_COUNT];
 bool state_changed = false;
+bool restart_internal_clock = true;
 
 // State variables that may be changed inside ISR must be volatile.
 volatile unsigned long last_clock_input = 0;
@@ -131,6 +143,18 @@ void setup() {
 }
 
 void loop() {
+    u_timer.tick();
+
+    // If internal clock was changed, restart clock:
+    if (restart_internal_clock) {
+        restart_internal_clock = false;
+         u_timer.cancel();
+        if (state.internal_clock) {
+            // 4 PPQN of tempo in micros.
+            unsigned long interval = (60 * 1000000) / state.tempo / 4;
+            u_timer.every(interval, PlayStep);
+        }
+    }
     // Read cv inputs and process encoder state to determine state for this
     // loop.
     hw.ProcessInputs();
@@ -167,8 +191,24 @@ void loop() {
     if (update_display) UpdateDisplay();
 }
 
+bool PlayStep(void *) {
+    for (int i = 0; i < OUTPUT_COUNT; i++) {
+        if (patterns[i].NextStep() == 1) {
+            hw.outputs[i].High();
+        }
+    }
+    last_clock_input = millis();
+    trigger_active = true;
+    ui_trigger_active = true;
+    update_display = true;
+    return true;
+}
+
 // Pin Change Interrupt on Port B (D13).
 ISR (PCINT0_vect) {
+    // Ignore handler if using internal clock.
+    if (state.internal_clock) return;
+
     // Advance the patterns on CLK input
     if (digitalRead(CLK_PIN) == HIGH) {
         for (int i = 0; i < OUTPUT_COUNT; i++) {
@@ -184,11 +224,9 @@ ISR (PCINT0_vect) {
 }
 
 void HandlePress(EncoderButton &eb) {
-
     switch (selected_mode) {
     case UIMODE_PAGE:
         selected_mode = UIMODE_SELECT;
-        update_display = true;
         break;
 
     case UIMODE_EDIT:
@@ -197,7 +235,12 @@ void HandlePress(EncoderButton &eb) {
             // If leaving EDIT mode, save state.
             selected_mode = UIMODE_SELECT;
             state_changed = true;
-            update_display = true;
+            break;
+        case PAGE_CLOCK:
+            selected_mode = UIMODE_SELECT;
+            selected_page = PAGE_MAIN;
+            state_changed = true;
+            restart_internal_clock = true;
             break;
         }
         break;
@@ -206,16 +249,24 @@ void HandlePress(EncoderButton &eb) {
         switch (selected_page) {
         case PAGE_MAIN:
             selected_mode = UIMODE_EDIT;
-            update_display = true;
             break;
         case PAGE_MODE:
-            selected_page = PAGE_MAIN;
             selected_mode = UIMODE_SELECT;
-            update_display = true;
+            selected_page = PAGE_MAIN;
+            break;
+        case PAGE_CLOCK:
+            if (state.internal_clock) {
+                selected_mode = UIMODE_EDIT;
+            } else {
+                selected_mode = UIMODE_SELECT;
+                selected_page = PAGE_MAIN;
+                restart_internal_clock = true;
+            }
             break;
         }
         break;
     }
+    update_display = true;
 }
 
 // Long press handler will toggle between page select mode and parameter edit
@@ -242,6 +293,9 @@ void HandleRotate(EncoderButton &eb) {
         break;
     case PAGE_MODE:
         UpdateMode(dir);
+        break;
+    case PAGE_CLOCK:
+        UpdateClock(dir);
         break;
     }
 }
@@ -307,8 +361,30 @@ void UpdateMode(Direction dir) {
     state_changed = true;
 }
 
+// Select between internal and external clock mode.
+void UpdateClock(Direction dir) {
+    switch (selected_mode) {
+    case UIMODE_SELECT:
+        state.internal_clock = !state.internal_clock;
+        break;
+    case UIMODE_EDIT:
+        // Read the accelerated amount of encoder rotations for adjusting tempo.
+        int amount = hw.eb.increment() * hw.eb.increment();
+        if (dir == DIRECTION_INCREMENT && state.tempo < MAX_TEMPO) {
+            state.tempo = min(state.tempo + amount, MAX_TEMPO);
+        } else if(dir == DIRECTION_DECREMENT && state.tempo > 0) {
+            state.tempo = max(state.tempo - amount, MIN_TEMPO);
+        }
+        break;
+    }
+    update_display = true;
+    state_changed = true;
+}
+
 void HandlePressedRotation(EncoderButton &eb) {
-    ChangeSelectedOutput(hw.EncoderDirection());
+    if (selected_page == PAGE_MAIN) {
+        ChangeSelectedOutput(hw.EncoderDirection());
+    }
 }
 
 void ChangeSelectedOutput(Direction dir) {
@@ -380,7 +456,7 @@ void DisplayParam() {
 void DisplaySelectedUIMode() {
     switch (selected_mode) {
         case UIMODE_SELECT:
-            if (selected_page == PAGE_MAIN) {
+            if (selected_page == PAGE_MAIN || selected_page == PAGE_CLOCK) {
                 hw.display.drawChar(116, 18, LEFT_TRIANGLE, 1, 0, 1);
             } else if (selected_page == PAGE_MODE) {
                 hw.display.drawBitmap(112, 16, pencil_gfx, 12, 12, 1);
@@ -494,5 +570,16 @@ void DisplayOutputModePage() {
 
 void DisplayClockPage() {
     PageTitle("   CLOCK  ");
+    hw.display.setCursor(26, 18);
+    hw.display.setTextSize(0);
+    hw.display.print(F("Mode: "));
+    hw.display.println((state.internal_clock) ? F("INTERNAL"): F("EXTERNAL"));
 
+    if (state.internal_clock) {
+        (state.tempo > 99)
+            ? hw.display.setCursor(38, 32)
+            : hw.display.setCursor(50, 32);
+        hw.display.setTextSize(3);
+        hw.display.print(state.tempo);
+    }
 }

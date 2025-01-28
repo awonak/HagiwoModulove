@@ -36,7 +36,8 @@ struct State {
     PatternState pattern[OUTPUT_COUNT];
     OutputMode output_mode;
     uint8_t selected_out = 0;
-
+    bool internal_clock = false;
+    int tempo = 130;
 };
 State state;
 
