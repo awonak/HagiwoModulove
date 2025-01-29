@@ -20,7 +20,7 @@
  *  - fix display artifacts
  *
  */
-#include <arduino-timer.h>
+#include <FlexiTimer2.h>
 
 // Include the Modulove hardware library.
 #include <arythmatik.h>
@@ -56,17 +56,14 @@ const byte MAX_STEPS = 32;
 const byte TRIGGER_DURATION_MS = 50;
 const byte UI_TRIGGER_DURATION_MS = 200;
 
-const int MAX_TEMPO = 300;
+const int MAX_TEMPO = 250;
 const int MIN_TEMPO = 20;
-
-// Global timer for internal clock.
-Timer<1, micros> u_timer;
 
 // Declare A-RYTH-MATIK hardware variable.
 Arythmatik hw;
 Pattern patterns[OUTPUT_COUNT];
 bool state_changed = false;
-bool restart_internal_clock = true;
+bool update_internal_clock = false;
 
 // State variables that may be changed inside ISR must be volatile.
 volatile unsigned long last_clock_input = 0;
@@ -131,6 +128,8 @@ void setup() {
     hw.eb.setClickHandler(HandlePress);
     hw.eb.setLongPressHandler(HandleLongPress);
     hw.eb.setEncoderPressedHandler(HandlePressedRotation);
+    // Reduce encoder read rate to read no more than once every 50ms.
+    hw.eb.setRateLimit(50);
 
     // Initialize the A-RYTH-MATIK peripherials.
     hw.Init();
@@ -138,26 +137,27 @@ void setup() {
     // Initial patterns.
     InitState(patterns);
 
+    if (state.internal_clock) {
+        StartClock();
+    }
+
     // Display each clock division on the OLED.
     UpdateDisplay();
 }
 
 void loop() {
-    u_timer.tick();
-
-    // If internal clock was changed, restart clock:
-    if (restart_internal_clock) {
-        restart_internal_clock = false;
-         u_timer.cancel();
-        if (state.internal_clock) {
-            // 4 PPQN of tempo in micros.
-            unsigned long interval = (60 * 1000000) / state.tempo / 4;
-            u_timer.every(interval, PlayStep);
-        }
-    }
     // Read cv inputs and process encoder state to determine state for this
     // loop.
     hw.ProcessInputs();
+
+    // If internal clock was changed, restart clock:
+    if (update_internal_clock) {
+        update_internal_clock = false;
+        FlexiTimer2::stop();
+        if (state.internal_clock) {
+            StartClock();
+        }
+    }
 
     // Turn off all outputs after trigger duration.
     if (trigger_active && millis() > last_clock_input + TRIGGER_DURATION_MS) {
@@ -191,7 +191,14 @@ void loop() {
     if (update_display) UpdateDisplay();
 }
 
-bool PlayStep(void *) {
+void StartClock() {
+    // 4PPQN period in milliseconds.
+    unsigned long interval = (60.0 * 1000) / double(state.tempo) / 4.0;
+    FlexiTimer2::set(interval, 1.0 / 1000, PlayStep);
+    FlexiTimer2::start();
+}
+
+void PlayStep() {
     for (int i = 0; i < OUTPUT_COUNT; i++) {
         if (patterns[i].NextStep() == 1) {
             hw.outputs[i].High();
@@ -201,7 +208,6 @@ bool PlayStep(void *) {
     trigger_active = true;
     ui_trigger_active = true;
     update_display = true;
-    return true;
 }
 
 // Pin Change Interrupt on Port B (D13).
@@ -211,15 +217,7 @@ ISR (PCINT0_vect) {
 
     // Advance the patterns on CLK input
     if (digitalRead(CLK_PIN) == HIGH) {
-        for (int i = 0; i < OUTPUT_COUNT; i++) {
-            if (patterns[i].NextStep() == 1) {
-                hw.outputs[i].High();
-            }
-        }
-        last_clock_input = millis();
-        trigger_active = true;
-        ui_trigger_active = true;
-        update_display = true;
+        PlayStep();
     }
 }
 
@@ -234,15 +232,14 @@ void HandlePress(EncoderButton &eb) {
         case PAGE_MAIN:
             // If leaving EDIT mode, save state.
             selected_mode = UIMODE_SELECT;
-            state_changed = true;
             break;
         case PAGE_CLOCK:
             selected_mode = UIMODE_SELECT;
             selected_page = PAGE_MAIN;
-            state_changed = true;
-            restart_internal_clock = true;
+            update_internal_clock = true;
             break;
         }
+        state_changed = true;
         break;
 
     case UIMODE_SELECT:
@@ -260,7 +257,8 @@ void HandlePress(EncoderButton &eb) {
             } else {
                 selected_mode = UIMODE_SELECT;
                 selected_page = PAGE_MAIN;
-                restart_internal_clock = true;
+                update_internal_clock = true;
+                state_changed = true;
             }
             break;
         }
@@ -313,7 +311,7 @@ void UpdatePage(Direction dir) {
 }
 
 void UpdateParameter(Direction dir) {
-    // Convert the configured encoder direction to an integer equivalent value.
+    // Convert the configured encoder direction to a single integer equivalent value.
     int val = dir == DIRECTION_INCREMENT ? 1 : -1;
 
     switch (selected_mode) {
@@ -355,17 +353,17 @@ void UpdateMode(Direction dir) {
     }
     // Update the mode for all outputs.
     for (int i = 0; i < OUTPUT_COUNT; i++) {
+        // TODO: implement additional output modes.
         // outputs[i].SetMode(state.output_mode);
     }
     update_display = true;
-    state_changed = true;
 }
 
 // Select between internal and external clock mode.
 void UpdateClock(Direction dir) {
     switch (selected_mode) {
     case UIMODE_SELECT:
-        state.internal_clock = !state.internal_clock;
+        state.internal_clock = (dir == DIRECTION_INCREMENT);
         break;
     case UIMODE_EDIT:
         // Read the accelerated amount of encoder rotations for adjusting tempo.
@@ -378,7 +376,6 @@ void UpdateClock(Direction dir) {
         break;
     }
     update_display = true;
-    state_changed = true;
 }
 
 void HandlePressedRotation(EncoderButton &eb) {
@@ -420,16 +417,10 @@ void UpdateDisplay() {
     hw.display.display();
 }
 
-// Page title centered within 10 characters.
-void PageTitle(char *title) {
-    hw.display.setTextSize(0);
-    hw.display.setCursor(32, 0);
-    hw.display.println(title);
-    hw.display.drawFastHLine(0, 10, SCREEN_WIDTH, WHITE);
-}
-
 void DisplayMainPage() {
-    PageTitle(" EUCLIDEAN");
+    hw.display.setCursor(37, 0);
+    hw.display.println(F("EUCLIDEAN"));
+    hw.display.drawLine(0, 10, 128, 10, 1);
     DisplayParam();
     DisplayChannels();
     DisplayPattern();
@@ -437,7 +428,6 @@ void DisplayMainPage() {
 
 void DisplayParam() {
     hw.display.setCursor(26, 18);
-    hw.display.setTextSize(0);
     if (selected_param == PARAM_STEPS) {
         hw.display.print(F("Steps: "));
         hw.display.print(patterns[state.selected_out].steps);
@@ -475,14 +465,15 @@ void DisplayChannels() {
     hw.display.setCursor(4, 20);
     hw.display.setTextSize(2);
     hw.display.println(state.selected_out + 1);
+    hw.display.setTextSize(0);
 
-    int start = 42;
-    int top = start;
-    int left = 4;
-    int boxSize = 4;
-    int margin = 2;
-    int wrap = 3;
-
+    const byte start = 42;
+    const byte boxSize = 4;
+    const byte margin = 2;
+    const byte wrap = 3;
+    byte top = start;
+    byte left = 4;
+    
     for (int i = 1; i <= OUTPUT_COUNT; i++) {
         // Draw box, fill current step.
         (i == state.selected_out + 1)
@@ -502,16 +493,16 @@ void DisplayChannels() {
 
 void DisplayPattern() {
     // Draw boxes for pattern length.
-    int start = 26;
-    int top = 30;
-    int left = start;
-    int boxSize = 7;
-    int margin = 2;
-    int wrap = 8;
-
-    int steps = patterns[state.selected_out].steps;
-    int offset = patterns[state.selected_out].offset;
-    int padding = patterns[state.selected_out].padding;
+    const byte start = 26;
+    const byte boxSize = 7;
+    const byte margin = 2;
+    const byte wrap = 8;
+    byte top = 30;
+    byte left = start;
+    
+    byte steps = patterns[state.selected_out].steps;
+    byte offset = patterns[state.selected_out].offset;
+    byte padding = patterns[state.selected_out].padding;
 
     for (int i = 0; i < steps + padding; i++) {
         // Draw box, fill current step.
@@ -546,7 +537,9 @@ void DisplayPattern() {
 
 
 void DisplayOutputModePage() {
-    PageTitle("OUTPUT MODE");
+    hw.display.setCursor(32, 0);
+    hw.display.println(F("OUTPUT MODE"));
+    hw.display.drawLine(0, 10, 128, 10, 1);
     // Draw output modes
     (state.output_mode == TRIGGER)
         ? hw.display.fillRect(12, 20, 8, 8, 1)
@@ -569,9 +562,11 @@ void DisplayOutputModePage() {
 }
 
 void DisplayClockPage() {
-    PageTitle("   CLOCK  ");
+    hw.display.setCursor(48, 0);
+    hw.display.println(F("CLOCK"));
+    hw.display.drawLine(0, 10, 128, 10, 1);
+
     hw.display.setCursor(26, 18);
-    hw.display.setTextSize(0);
     hw.display.print(F("Mode: "));
     hw.display.println((state.internal_clock) ? F("INTERNAL"): F("EXTERNAL"));
 
@@ -581,5 +576,6 @@ void DisplayClockPage() {
             : hw.display.setCursor(50, 32);
         hw.display.setTextSize(3);
         hw.display.print(state.tempo);
+        hw.display.setTextSize(0);
     }
 }
