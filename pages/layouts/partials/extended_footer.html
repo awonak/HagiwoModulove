@@ -6,4 +6,14 @@
   function gtag(){dataLayer.push(arguments);}
   gtag('js', new Date());
   gtag('config', 'G-RS7FK2BW2Q', { 'page_path': location.pathname + location.hash });
+  // Attach gtag download event when arduino-uploader buttons are present.
+  // Note: doesn't not distinguish between successful / unsuccessful flash.
+  document.querySelectorAll('[arduino-uploader]').forEach((el) => {
+    el.addEventListener('click', async () => {
+      gtag('event', 'download_firmware', {
+        'file': el.getAttribute('hex-href'),
+        'page_path': location.pathname + location.hash,
+      });
+    })
+  });
 </script>
