@@ -15,10 +15,6 @@
  *
  * RST: Trigger this input to reset all patterns.
  *
- * TODO:
- *  - Fix timer based lag from UI input (try interrupt based library instead)
- *  - fix display artifacts
- *
  */
 #include <FlexiTimer2.h>
 
@@ -49,7 +45,7 @@ const unsigned char pencil_gfx[] PROGMEM = {
 // #define ROTATE_PANEL
 
 // Flag for reversing the encoder direction.
-#define ENCODER_REVERSED
+// #define ENCODER_REVERSED
 
 using namespace modulove;
 using namespace arythmatik;
@@ -78,7 +74,7 @@ enum Parameter {
     PARAM_HITS,
     PARAM_OFFSET,
     PARAM_PADDING,
-    PARAM_NONE,
+    PARAM_LAST,
 };
 Parameter selected_param = PARAM_STEPS;
 
@@ -338,9 +334,9 @@ void UpdateParameter(Direction dir) {
     switch (selected_mode) {
         case UIMODE_SELECT:
             if (static_cast<Parameter>(selected_param) == 0 && val < 0) {
-                selected_param = static_cast<Parameter>(PARAM_NONE - 1);
+                selected_param = static_cast<Parameter>(PARAM_LAST - 1);
             } else {
-                selected_param = static_cast<Parameter>((selected_param + val) % PARAM_NONE);
+                selected_param = static_cast<Parameter>((selected_param + val) % PARAM_LAST);
             }
             break;
 
