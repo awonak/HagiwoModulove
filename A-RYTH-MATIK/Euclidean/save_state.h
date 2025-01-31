@@ -12,10 +12,21 @@ using namespace arythmatik;
 // Script state & storage variables.
 // Expected version string for this firmware.
 const char SCRIPT_NAME[] = "EUCLIDEAN";
-const uint8_t SCRIPT_VER = 1;
+const uint8_t SCRIPT_VER = 2;
 
 const PatternState default_pattern = { 16, 4, 0, 0};
 
+// Enum for the current selected output mode.
+enum OutputMode {
+    // Follow the state of the input clock.
+    TRIGGER,
+    // 100% Duty cycle gate.
+    GATE,
+    // Toggle between on/off with each clock input rising edge.
+    FLIP,
+
+    OUTPUTMODE_LAST,
+};
 
 struct State {
     // Version check.
@@ -23,6 +34,10 @@ struct State {
     uint8_t version;
     // State variables.
     PatternState pattern[OUTPUT_COUNT];
+    OutputMode output_mode = TRIGGER;
+    uint8_t selected_out = 0;
+    uint8_t tempo = 130;
+    bool internal_clock = false;
 };
 State state;
 
