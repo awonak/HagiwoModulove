@@ -14,7 +14,7 @@
  * CLK: Clock input used to advance the patterns.
  *
  * RST: Trigger this input to reset all patterns.
- * 
+ *
  * TODO:
  *  - Fix timer based lag from UI input (try interrupt based library instead)
  *  - fix display artifacts
@@ -25,6 +25,9 @@
 // Include the Modulove hardware library.
 #include <arythmatik.h>
 
+#include <Fonts/FreeSans18pt7b.h>
+#include <Fonts/FreeSansBold9pt7b.h>
+
 // Script specific helper libraries.
 #include "pattern.h"
 #include "save_state.h"
@@ -34,10 +37,9 @@
 #define LEFT_TRIANGLE 0x11
 
 // 'pencil', 12x12px
-const unsigned char pencil_gfx [] PROGMEM = {
-	0x00, 0x00, 0x00, 0xc0, 0x01, 0xa0, 0x02, 0x60, 0x04, 0x40, 0x08, 0x80, 0x11, 0x00, 0x22, 0x00, 
-	0x64, 0x00, 0x78, 0x00, 0x70, 0x00, 0x00, 0x00
-};
+const unsigned char pencil_gfx[] PROGMEM = {
+    0x00, 0x00, 0x00, 0xc0, 0x01, 0xa0, 0x02, 0x60, 0x04, 0x40, 0x08, 0x80, 0x11, 0x00, 0x22, 0x00,
+    0x64, 0x00, 0x78, 0x00, 0x70, 0x00, 0x00, 0x00};
 
 // Flag for enabling debug print to serial monitoring output.
 // Note: this affects performance and locks LED 4 & 5 on HIGH.
@@ -52,8 +54,7 @@ const unsigned char pencil_gfx [] PROGMEM = {
 using namespace modulove;
 using namespace arythmatik;
 
-const byte MAX_STEPS = 32;
-const byte TRIGGER_DURATION_MS = 50;
+const byte TRIGGER_DURATION_MS = 15;
 const byte UI_TRIGGER_DURATION_MS = 200;
 
 const int MAX_TEMPO = 250;
@@ -98,14 +99,13 @@ enum MenuPage {
 };
 MenuPage selected_page = PAGE_MAIN;
 
-
 void setup() {
 // Only enable Serial monitoring if DEBUG is defined.
 // Note: this affects performance and locks LED 4 & 5 on HIGH.
 #ifdef DEBUG
     Serial.begin(115200);
 #endif
-    
+
 #ifdef ROTATE_PANEL
     hw.config.RotatePanel = true;
 #endif
@@ -114,13 +114,14 @@ void setup() {
     hw.config.ReverseEncoder = true;
 #endif
 
+    // Dsiable echo clock when using Interrupt for CLK input.
+    hw.config.DisableEchoClock = true;
+
     // Thanks to Sitka Instruments for the tip and docs from https://dronebotworkshop.com/interrupts/
-    // Set CLK pin as input with pullup
-    pinMode(CLK_PIN, INPUT_PULLUP);
     // Enable PCIE0 Bit0 = 1 (Port B)
     PCICR |= B00000001;
-    // Select PCINT5 Bit5 = 1 (Pin 13)
-    PCMSK0 |= B00100000;
+    // Enable PCINT5 & PCINT3 (Pin 13 & Pin 11)
+    PCMSK0 |= B00101000;
     // ISR (PCINT0_vect) - ISR for Port B (D8 - D13)
 
     // Set up encoder parameters
@@ -161,8 +162,10 @@ void loop() {
 
     // Turn off all outputs after trigger duration.
     if (trigger_active && millis() > last_clock_input + TRIGGER_DURATION_MS) {
-        for (int i = 0; i < OUTPUT_COUNT; i++) {
-            hw.outputs[i].Low();
+        if (state.output_mode == TRIGGER) {
+            for (int i = 0; i < OUTPUT_COUNT; i++) {
+                hw.outputs[i].Low();
+            }
         }
         trigger_active = false;
     }
@@ -170,14 +173,6 @@ void loop() {
     // Turn off current step animation after ui trigger duration.
     if (ui_trigger_active && millis() > last_clock_input + UI_TRIGGER_DURATION_MS) {
         ui_trigger_active = false;
-        update_display = true;
-    }
-
-    // Reset all patterns to the first pattern step on RST input.
-    if (hw.rst.State() == DigitalInput::STATE_RISING) {
-        for (int i = 0; i < OUTPUT_COUNT; i++) {
-            patterns[i].Reset();
-        }
         update_display = true;
     }
 
@@ -199,9 +194,16 @@ void StartClock() {
 }
 
 void PlayStep() {
+    GatesOff();
     for (int i = 0; i < OUTPUT_COUNT; i++) {
         if (patterns[i].NextStep() == 1) {
-            hw.outputs[i].High();
+            if (state.output_mode == FLIP) {
+                hw.outputs[i].On()
+                    ? hw.outputs[i].Low()
+                    : hw.outputs[i].High();
+            } else {
+                hw.outputs[i].High();
+            }
         }
     }
     last_clock_input = millis();
@@ -210,59 +212,79 @@ void PlayStep() {
     update_display = true;
 }
 
-// Pin Change Interrupt on Port B (D13).
-ISR (PCINT0_vect) {
-    // Ignore handler if using internal clock.
+void GatesOff() {
+    if (state.output_mode == GATE) {
+        for (int i = 0; i < OUTPUT_COUNT; i++) {
+            hw.outputs[i].Low();
+        }
+    }
+}
+
+// Pin Change Interrupt on Port B (D13 CLK).
+ISR(PCINT0_vect) {
+    // Reset all patterns to the first pattern step on RST input.
+    if (hw.rst.Read() == HIGH) {
+        for (int i = 0; i < OUTPUT_COUNT; i++) {
+            patterns[i].Reset();
+        }
+        update_display = true;
+    }
+
+    // Ignore CLK handler if using internal clock.
     if (state.internal_clock) return;
 
     // Advance the patterns on CLK input
-    if (digitalRead(CLK_PIN) == HIGH) {
+    if (hw.clk.Read() == HIGH) {
         PlayStep();
+        digitalWrite(CLOCK_LED, HIGH);
+    } else {
+        digitalWrite(CLOCK_LED, LOW);
     }
 }
 
 void HandlePress(EncoderButton &eb) {
     switch (selected_mode) {
-    case UIMODE_PAGE:
-        selected_mode = UIMODE_SELECT;
-        break;
+        case UIMODE_PAGE:
+            selected_mode = UIMODE_SELECT;
+            break;
 
-    case UIMODE_EDIT:
-        switch (selected_page) {
-        case PAGE_MAIN:
-            // If leaving EDIT mode, save state.
-            selected_mode = UIMODE_SELECT;
+        case UIMODE_EDIT:
+            switch (selected_page) {
+                case PAGE_MAIN:
+                    // If leaving EDIT mode, save state.
+                    selected_mode = UIMODE_SELECT;
+                    break;
+                case PAGE_CLOCK:
+                    selected_mode = UIMODE_SELECT;
+                    selected_page = PAGE_MAIN;
+                    update_internal_clock = true;
+                    break;
+            }
+            state_changed = true;
             break;
-        case PAGE_CLOCK:
-            selected_mode = UIMODE_SELECT;
-            selected_page = PAGE_MAIN;
-            update_internal_clock = true;
-            break;
-        }
-        state_changed = true;
-        break;
 
-    case UIMODE_SELECT:
-        switch (selected_page) {
-        case PAGE_MAIN:
-            selected_mode = UIMODE_EDIT;
-            break;
-        case PAGE_MODE:
-            selected_mode = UIMODE_SELECT;
-            selected_page = PAGE_MAIN;
-            break;
-        case PAGE_CLOCK:
-            if (state.internal_clock) {
-                selected_mode = UIMODE_EDIT;
-            } else {
-                selected_mode = UIMODE_SELECT;
-                selected_page = PAGE_MAIN;
-                update_internal_clock = true;
-                state_changed = true;
+        case UIMODE_SELECT:
+            switch (selected_page) {
+                case PAGE_MAIN:
+                    selected_mode = UIMODE_EDIT;
+                    break;
+                case PAGE_MODE:
+                    selected_mode = UIMODE_SELECT;
+                    selected_page = PAGE_MAIN;
+                    state_changed = true;
+                    break;
+                case PAGE_CLOCK:
+                    if (state.internal_clock) {
+                        selected_mode = UIMODE_EDIT;
+                    } else {
+                        selected_mode = UIMODE_SELECT;
+                        selected_page = PAGE_MAIN;
+                        update_internal_clock = true;
+                        state_changed = true;
+                    }
+                    break;
             }
             break;
-        }
-        break;
     }
     update_display = true;
 }
@@ -271,9 +293,9 @@ void HandlePress(EncoderButton &eb) {
 // mode for the current page.
 void HandleLongPress(EncoderButton &eb) {
     // Toggle between menu page select mode.
-    selected_mode = (selected_mode == UIMODE_PAGE) 
-        ? UIMODE_SELECT
-        : UIMODE_PAGE;
+    selected_mode = (selected_mode == UIMODE_PAGE)
+                        ? UIMODE_SELECT
+                        : UIMODE_PAGE;
     update_display = true;
 }
 
@@ -286,15 +308,15 @@ void HandleRotate(EncoderButton &eb) {
         return;
     }
     switch (selected_page) {
-    case PAGE_MAIN:
-        UpdateParameter(dir);
-        break;
-    case PAGE_MODE:
-        UpdateMode(dir);
-        break;
-    case PAGE_CLOCK:
-        UpdateClock(dir);
-        break;
+        case PAGE_MAIN:
+            UpdateParameter(dir);
+            break;
+        case PAGE_MODE:
+            UpdateMode(dir);
+            break;
+        case PAGE_CLOCK:
+            UpdateClock(dir);
+            break;
     }
 }
 
@@ -303,8 +325,7 @@ void UpdatePage(Direction dir) {
     if (dir == DIRECTION_INCREMENT && selected_page < PAGE_LAST - 1) {
         selected_page = static_cast<MenuPage>((selected_page + 1) % PAGE_LAST);
         update_display = true;
-    }
-    else if (dir == DIRECTION_DECREMENT && selected_page > PAGE_MAIN) {
+    } else if (dir == DIRECTION_DECREMENT && selected_page > PAGE_MAIN) {
         selected_page = static_cast<MenuPage>((selected_page - 1) % PAGE_LAST);
         update_display = true;
     }
@@ -315,31 +336,31 @@ void UpdateParameter(Direction dir) {
     int val = dir == DIRECTION_INCREMENT ? 1 : -1;
 
     switch (selected_mode) {
-    case UIMODE_SELECT:
-        if (static_cast<Parameter>(selected_param) == 0 && val < 0) {
-            selected_param = static_cast<Parameter>(PARAM_NONE - 1);
-        } else {
-            selected_param = static_cast<Parameter>((selected_param + val) % PARAM_NONE);
-        }
-        break;
-    
-    case UIMODE_EDIT:
-        // Handle rotation for current parameter.
-        switch (selected_param) {
-        case PARAM_STEPS:
-            patterns[state.selected_out].ChangeSteps(val);
+        case UIMODE_SELECT:
+            if (static_cast<Parameter>(selected_param) == 0 && val < 0) {
+                selected_param = static_cast<Parameter>(PARAM_NONE - 1);
+            } else {
+                selected_param = static_cast<Parameter>((selected_param + val) % PARAM_NONE);
+            }
             break;
-        case PARAM_HITS:
-            patterns[state.selected_out].ChangeHits(val);
+
+        case UIMODE_EDIT:
+            // Handle rotation for current parameter.
+            switch (selected_param) {
+                case PARAM_STEPS:
+                    patterns[state.selected_out].ChangeSteps(val);
+                    break;
+                case PARAM_HITS:
+                    patterns[state.selected_out].ChangeHits(val);
+                    break;
+                case PARAM_OFFSET:
+                    patterns[state.selected_out].ChangeOffset(val);
+                    break;
+                case PARAM_PADDING:
+                    patterns[state.selected_out].ChangePadding(val);
+                    break;
+            }
             break;
-        case PARAM_OFFSET:
-            patterns[state.selected_out].ChangeOffset(val);
-            break;
-        case PARAM_PADDING:
-            patterns[state.selected_out].ChangePadding(val);
-            break;
-        }
-        break;
     }
     update_display = true;
 }
@@ -351,29 +372,24 @@ void UpdateMode(Direction dir) {
     } else if (dir == DIRECTION_DECREMENT && state.output_mode > 0) {
         state.output_mode = static_cast<OutputMode>(state.output_mode - 1);
     }
-    // Update the mode for all outputs.
-    for (int i = 0; i < OUTPUT_COUNT; i++) {
-        // TODO: implement additional output modes.
-        // outputs[i].SetMode(state.output_mode);
-    }
     update_display = true;
 }
 
 // Select between internal and external clock mode.
 void UpdateClock(Direction dir) {
     switch (selected_mode) {
-    case UIMODE_SELECT:
-        state.internal_clock = (dir == DIRECTION_INCREMENT);
-        break;
-    case UIMODE_EDIT:
-        // Read the accelerated amount of encoder rotations for adjusting tempo.
-        int amount = hw.eb.increment() * hw.eb.increment();
-        if (dir == DIRECTION_INCREMENT && state.tempo < MAX_TEMPO) {
-            state.tempo = min(state.tempo + amount, MAX_TEMPO);
-        } else if(dir == DIRECTION_DECREMENT && state.tempo > 0) {
-            state.tempo = max(state.tempo - amount, MIN_TEMPO);
-        }
-        break;
+        case UIMODE_SELECT:
+            state.internal_clock = (dir == DIRECTION_INCREMENT);
+            break;
+        case UIMODE_EDIT:
+            // Read the accelerated amount of encoder rotations for adjusting tempo.
+            int amount = hw.eb.increment() * hw.eb.increment();
+            if (dir == DIRECTION_INCREMENT && state.tempo < MAX_TEMPO) {
+                state.tempo = min(state.tempo + amount, MAX_TEMPO);
+            } else if (dir == DIRECTION_DECREMENT && state.tempo > 0) {
+                state.tempo = max(state.tempo - amount, MIN_TEMPO);
+            }
+            break;
     }
     update_display = true;
 }
@@ -462,10 +478,10 @@ void DisplaySelectedUIMode() {
 }
 
 void DisplayChannels() {
-    hw.display.setCursor(4, 20);
-    hw.display.setTextSize(2);
+    hw.display.setCursor(4, 26);
+    hw.display.setFont(&FreeSansBold9pt7b);
     hw.display.println(state.selected_out + 1);
-    hw.display.setTextSize(0);
+    hw.display.setFont();
 
     const byte start = 42;
     const byte boxSize = 4;
@@ -473,7 +489,7 @@ void DisplayChannels() {
     const byte wrap = 3;
     byte top = start;
     byte left = 4;
-    
+
     for (int i = 1; i <= OUTPUT_COUNT; i++) {
         // Draw box, fill current step.
         (i == state.selected_out + 1)
@@ -499,14 +515,14 @@ void DisplayPattern() {
     const byte wrap = 8;
     byte top = 30;
     byte left = start;
-    
+
     byte steps = patterns[state.selected_out].steps;
     byte offset = patterns[state.selected_out].offset;
     byte padding = patterns[state.selected_out].padding;
 
     for (int i = 0; i < steps + padding; i++) {
         // Draw box, fill current step.
-        switch(patterns[state.selected_out].GetStep(i)) {
+        switch (patterns[state.selected_out].GetStep(i)) {
             case 1:
                 hw.display.fillRect(left, top, boxSize, boxSize, 1);
                 break;
@@ -515,7 +531,7 @@ void DisplayPattern() {
                 break;
             case 2:
                 hw.display.drawRect(left, top, boxSize, boxSize, 1);
-                hw.display.drawLine(left+boxSize-1, top, left, top+boxSize-1, 1);
+                hw.display.drawLine(left + boxSize - 1, top, left, top + boxSize - 1, 1);
                 break;
         }
 
@@ -534,7 +550,6 @@ void DisplayPattern() {
         }
     }
 }
-
 
 void DisplayOutputModePage() {
     hw.display.setCursor(32, 0);
@@ -568,14 +583,14 @@ void DisplayClockPage() {
 
     hw.display.setCursor(26, 18);
     hw.display.print(F("Mode: "));
-    hw.display.println((state.internal_clock) ? F("INTERNAL"): F("EXTERNAL"));
+    hw.display.println((state.internal_clock) ? F("INTERNAL") : F("EXTERNAL"));
 
     if (state.internal_clock) {
         (state.tempo > 99)
-            ? hw.display.setCursor(38, 32)
-            : hw.display.setCursor(50, 32);
-        hw.display.setTextSize(3);
+            ? hw.display.setCursor(34, 50)
+            : hw.display.setCursor(46, 50);
+        hw.display.setFont(&FreeSans18pt7b);
         hw.display.print(state.tempo);
-        hw.display.setTextSize(0);
+        hw.display.setFont();
     }
 }
