@@ -41,6 +41,7 @@ jobs:
           arduino-cli lib install "Adafruit SSD1306"
           arduino-cli lib install EncoderButton
           arduino-cli lib install FastLED
+          arduino-cli lib install FlexiTimer2
 
       - name: Compile sketch and rename output file for release
         working-directory: ./${{ matrix.module}}
@@ -92,6 +93,7 @@ jobs:
             arduino-cli lib install "Adafruit GFX Library"
             arduino-cli lib install "Adafruit SSD1306"
             arduino-cli lib install EncoderButton
+            arduino-cli lib install FlexiTimer2
 
         - name: Compile sketch and rename output file for release
           working-directory: ./${{ matrix.module}}
