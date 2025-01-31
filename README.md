@@ -90,6 +90,7 @@ You're now ready to start hacking!
 
 * [Adafruit-GFX-Library](https://github.com/adafruit/Adafruit-GFX-Library)
 * [Adafruit_SSD1306](https://github.com/adafruit/Adafruit_SSD1306)
-* [Simple Rotary](https://github.com/mprograms/SimpleRotary/tree/master)
+* [EncoderButton](https://github.com/Stutchbury/EncoderButton)
 * [AVR IO](https://github.com/avrdudes/avr-libc)
 * [FastLED](https://github.com/FastLED/FastLED)
+* [FlexiTimer2](https://github.com/wimleers/flexitimer2)
