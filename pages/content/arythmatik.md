@@ -50,7 +50,10 @@ pattern.
 
 Use the encoder to select which parameter to edit, and click the encoder
 button to chanve between select and edit mode. Hold and rotate the encoder
-to change the selected output channel.
+to change the selected output channel. Long press to change global settings
+like output mode (trigger, gate, flip) and internal clock tempo.
+
+{{< youtube 5RXct6RRtnQ >}}
 
 ```yaml
 Encoder:

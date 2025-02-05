@@ -9,6 +9,7 @@
  *
  * ENCODER:
  *      Short press to change between selecting a prameter and editing the parameter.
+ *      Long press to change global settings like output mode (trigger, gate, flip) and internal clock tempo.
  *      Hold & rotate to change current output channel pattern.
  *
  * CLK: Clock input used to advance the patterns.

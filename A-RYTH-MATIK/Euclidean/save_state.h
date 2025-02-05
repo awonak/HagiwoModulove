@@ -12,7 +12,7 @@ using namespace arythmatik;
 // Script state & storage variables.
 // Expected version string for this firmware.
 const char SCRIPT_NAME[] = "EUCLIDEAN";
-const uint8_t SCRIPT_VER = 2;
+const uint8_t SCRIPT_VER = 3;
 
 const PatternState default_pattern = { 16, 4, 0, 0};
 
@@ -34,10 +34,10 @@ struct State {
     uint8_t version;
     // State variables.
     PatternState pattern[OUTPUT_COUNT];
-    OutputMode output_mode = TRIGGER;
-    uint8_t selected_out = 0;
-    uint8_t tempo = 130;
-    bool internal_clock = false;
+    OutputMode output_mode;
+    uint8_t selected_out;
+    uint8_t tempo;
+    bool internal_clock;
 };
 State state;
 
@@ -62,16 +62,15 @@ void InitState(Pattern *patterns) {
         strcpy(state.script, SCRIPT_NAME);
         state.version = SCRIPT_VER;
 
+        // Default state vars.
+        state.output_mode = TRIGGER;
+        state.selected_out = 0;
+        state.tempo = 130;
+        state.internal_clock = false;
+
         // Provide a even distribution of default probabilities.
         for (int i = 0; i < OUTPUT_COUNT; i++) {
             patterns[i].Init(default_pattern);
-        }
-        SaveChanges(patterns);
-
-    } else {
-        // Load state patterns into the current patterns in memory.
-        for (int i = 0; i < OUTPUT_COUNT; i++) {
-            patterns[i].Init(state.pattern[i]);
         }
     }
 }
