@@ -72,6 +72,11 @@ void InitState(Pattern *patterns) {
         for (int i = 0; i < OUTPUT_COUNT; i++) {
             patterns[i].Init(default_pattern);
         }
+    } else {
+        // Provide a even distribution of default probabilities.
+        for (int i = 0; i < OUTPUT_COUNT; i++) {
+            patterns[i].Init(state.pattern[i]);
+        }
     }
 }
 
