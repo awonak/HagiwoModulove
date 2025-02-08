@@ -10,11 +10,12 @@
  * ENCODER:
  *      Short press to change between selecting a prameter and editing the parameter.
  *      Long press to change global settings like output mode (trigger, gate, flip) and internal clock tempo.
+ *      Double Click to reset all patterns back to the first step.
  *      Hold & rotate to change current output channel pattern.
  *
  * CLK: Clock input used to advance the patterns.
  *
- * RST: Trigger this input to reset all patterns.
+ * RST: Trigger this input to reset all pattern back to the first step.
  *
  */
 #include <FlexiTimer2.h>
@@ -125,6 +126,7 @@ void setup() {
     hw.eb.setEncoderHandler(HandleRotate);
     hw.eb.setClickHandler(HandlePress);
     hw.eb.setLongPressHandler(HandleLongPress);
+    hw.eb.setDoubleClickHandler(HandleDoubleClick);
     hw.eb.setEncoderPressedHandler(HandlePressedRotation);
     // Reduce encoder read rate to read no more than once every 50ms.
     hw.eb.setRateLimit(50);
@@ -217,14 +219,22 @@ void GatesOff() {
     }
 }
 
+void Reset() {
+    for (int i = 0; i < OUTPUT_COUNT; i++) {
+        patterns[i].Reset();
+    }
+    update_display = true;
+}
+
+void HandleDoubleClick(EncoderButton &eb) {
+    Reset();
+}
+
 // Pin Change Interrupt on Port B (D13 CLK).
 ISR(PCINT0_vect) {
     // Reset all patterns to the first pattern step on RST input.
     if (hw.rst.Read() == HIGH) {
-        for (int i = 0; i < OUTPUT_COUNT; i++) {
-            patterns[i].Reset();
-        }
-        update_display = true;
+        Reset();
     }
 
     // Ignore CLK handler if using internal clock.
