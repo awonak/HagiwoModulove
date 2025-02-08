@@ -61,9 +61,16 @@ class Pattern {
             steps++;
             padding = min(padding, MAX_PATTERN_LEN - steps);
             updatePattern();
-        } else if (val == -1 && steps > 0) {
+        } else if (val == -1 && steps > 1) {
             steps--;
             hits = min(hits, steps);
+            offset = min(offset, (steps + padding) - 1);
+            updatePattern();
+        } else if (val == -1 && steps == 1) {
+            // Mute this pattern.
+            steps = 0;
+            offset = 0;
+            padding = 0;
             updatePattern();
         }
     }
@@ -72,7 +79,7 @@ class Pattern {
         if (val == 1 && hits < steps) {
             hits++;
             updatePattern();
-        } else if (val == -1 && hits > 1) {
+        } else if (val == -1 && hits > 0) {
             hits--;
             updatePattern();
         }
@@ -115,7 +122,7 @@ class Pattern {
         // Populate the euclidean rhythm pattern according to the current
         // instance variables.
         int bucket = 0;
-        pattern_[offset] = 1;
+        pattern_[offset] = (hits > 0) ? 1 : 0;
         for (int i = 1; i < steps; i++) {
             bucket += hits;
             if (bucket >= steps) {
