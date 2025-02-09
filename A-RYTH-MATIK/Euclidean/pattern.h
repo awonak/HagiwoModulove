@@ -34,10 +34,10 @@ class Pattern {
       \param padding additional empty steps added to the pattern.
     */
     void Init(PatternState state) {
-        steps = state.steps;
-        hits = state.hits;
-        offset = state.offset;
-        padding = state.padding;
+        steps = constrain(state.steps, 0, MAX_PATTERN_LEN);
+        hits = constrain(state.hits, 1, steps);
+        padding = constrain(state.padding, 0, MAX_PATTERN_LEN - steps);
+        offset = constrain(state.offset, 0, (steps + padding) - 1);
         updatePattern();
     }
 
