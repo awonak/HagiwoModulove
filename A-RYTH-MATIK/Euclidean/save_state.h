@@ -12,9 +12,9 @@ using namespace arythmatik;
 // Script state & storage variables.
 // Expected version string for this firmware.
 const char SCRIPT_NAME[] = "EUCLIDEAN";
-const uint8_t SCRIPT_VER = 3;
+const uint8_t SCRIPT_VER = 4;
 
-const PatternState default_pattern = { 16, 4, 0, 0};
+const PatternState default_pattern = {16, 4, 0, 0};
 
 // Enum for the current selected output mode.
 enum OutputMode {
@@ -41,6 +41,9 @@ struct State {
 };
 State state;
 
+// Limit the total number of save slots available.
+const int SAVE_SLOT_COUNT = 4;
+
 // Save state to EEPROM if state has changed.
 void SaveChanges(Pattern *patterns) {
     for (int i = 0; i < OUTPUT_COUNT; i++) {
@@ -49,6 +52,29 @@ void SaveChanges(Pattern *patterns) {
     EEPROM.put(0, state);
 }
 
+int GetBankAddress(byte bank) {
+    byte _bank = constrain(bank, 0, SAVE_SLOT_COUNT);
+    return sizeof(State) + (sizeof(PatternState) * OUTPUT_COUNT * _bank);
+}
+
+void SavePreset(Pattern *patterns, byte bank) {
+    PatternState pattern_to_save[OUTPUT_COUNT];
+
+    for (int i = 0; i < OUTPUT_COUNT; i++) {
+        pattern_to_save[i] = (PatternState){patterns[i].GetState()};
+    }
+
+    EEPROM.put(GetBankAddress(bank), pattern_to_save);
+}
+
+void LoadPreset(Pattern *patterns, byte bank) {
+    PatternState saved_pattern[OUTPUT_COUNT];
+    EEPROM.get(GetBankAddress(bank), saved_pattern);
+
+    for (int i = 0; i < OUTPUT_COUNT; i++) {
+        patterns[i].Init(saved_pattern[i]);
+    }
+}
 
 // Initialize script state from EEPROM or default values.
 void InitState(Pattern *patterns) {
@@ -71,6 +97,11 @@ void InitState(Pattern *patterns) {
         // Provide a even distribution of default probabilities.
         for (int i = 0; i < OUTPUT_COUNT; i++) {
             patterns[i].Init(default_pattern);
+        }
+
+        // Write default pattern to all save banks.
+        for (int i = 0; i < SAVE_SLOT_COUNT; i++) {
+            SavePreset(patterns, i);
         }
     } else {
         // Provide a even distribution of default probabilities.

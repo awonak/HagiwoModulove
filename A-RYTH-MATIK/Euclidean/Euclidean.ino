@@ -23,6 +23,7 @@
 // Include the Modulove hardware library.
 #include <arythmatik.h>
 
+// Install additional fonts.
 #include <Fonts/FreeSans18pt7b.h>
 #include <Fonts/FreeSansBold9pt7b.h>
 
@@ -70,6 +71,9 @@ volatile bool update_display = true;
 volatile bool trigger_active = false;
 volatile bool ui_trigger_active = false;
 
+// Selected save/load bank.
+byte selected_bank = 0;
+
 // Enum constants for selecting an editable attribute.
 enum Parameter {
     PARAM_STEPS,
@@ -93,6 +97,8 @@ enum MenuPage {
     PAGE_MAIN,
     PAGE_MODE,
     PAGE_CLOCK,
+    PAGE_SAVE,
+    PAGE_LOAD,
     PAGE_LAST,
 };
 MenuPage selected_page = PAGE_MAIN;
@@ -290,6 +296,14 @@ void HandlePress(EncoderButton &eb) {
                         state_changed = true;
                     }
                     break;
+                case PAGE_SAVE:
+                    SavePreset(patterns, selected_bank);
+                    selected_page = PAGE_MAIN;
+                    break;
+                case PAGE_LOAD:
+                    LoadPreset(patterns, selected_bank);
+                    selected_page = PAGE_MAIN;
+                    break;
             }
             break;
     }
@@ -323,6 +337,10 @@ void HandleRotate(EncoderButton &eb) {
             break;
         case PAGE_CLOCK:
             UpdateClock(dir);
+            break;
+        case PAGE_SAVE:
+        case PAGE_LOAD:
+            ChangeSelectedBank(dir);
             break;
     }
 }
@@ -401,6 +419,12 @@ void UpdateClock(Direction dir) {
     update_display = true;
 }
 
+void ChangeSelectedBank(Direction dir) {
+    int val = dir == DIRECTION_INCREMENT ? 1 : -1;
+    selected_bank = constrain(selected_bank + val, 0, SAVE_SLOT_COUNT - 1);
+    update_display = true;
+}
+
 void HandlePressedRotation(EncoderButton &eb) {
     if (selected_page == PAGE_MAIN) {
         ChangeSelectedOutput(hw.EncoderDirection());
@@ -436,6 +460,12 @@ void UpdateDisplay() {
         case PAGE_CLOCK:
             DisplayClockPage();
             break;
+        case PAGE_SAVE:
+            DisplaySavePage();
+            break;
+        case PAGE_LOAD:
+            DisplayLoadPage();
+            break;
     }
     hw.display.display();
 }
@@ -469,10 +499,12 @@ void DisplayParam() {
 void DisplaySelectedUIMode() {
     switch (selected_mode) {
         case UIMODE_SELECT:
-            if (selected_page == PAGE_MAIN || selected_page == PAGE_CLOCK) {
-                hw.display.drawChar(116, 18, LEFT_TRIANGLE, 1, 0, 1);
-            } else if (selected_page == PAGE_MODE) {
+            if (selected_page == PAGE_MODE) {
                 hw.display.drawBitmap(112, 16, pencil_gfx, 12, 12, 1);
+            } else if (selected_page == PAGE_MODE) {
+                // No indicator
+            } else {
+                hw.display.drawChar(116, 18, LEFT_TRIANGLE, 1, 0, 1);
             }
             break;
         case UIMODE_EDIT:
@@ -600,4 +632,21 @@ void DisplayClockPage() {
         hw.display.print(state.tempo);
         hw.display.setFont();
     }
+}
+
+void DisplaySavePage() { displayBank(true); }
+void DisplayLoadPage() { displayBank(false); }
+
+void displayBank(bool save) {
+    hw.display.setCursor(52, 0);
+    hw.display.println(save ? F("SAVE") : F("LOAD"));
+    hw.display.drawLine(0, 10, 128, 10, 1);
+
+    hw.display.setCursor(36, 18);
+    hw.display.println(save ? F("Save Bank") : F("Load Bank"));
+
+    hw.display.setCursor(52, 50);
+    hw.display.setFont(&FreeSans18pt7b);
+    hw.display.print(char(65 + selected_bank));
+    hw.display.setFont();
 }
