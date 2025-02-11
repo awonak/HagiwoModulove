@@ -56,15 +56,15 @@ like output mode (trigger, gate, flip) and internal clock tempo.
 {{< youtube 5RXct6RRtnQ >}}
 
 ```yaml
-Encoder:
-     short press: Toggle between selecting and editing a parameter.
-     hold and rotate: Change selected output channel.
+ENCODER:
+     Short press to change between selecting a prameter and editing the parameter.
+     Long press to change global settings like output mode (trigger, gate, flip) and internal clock tempo.
+     Double Click to reset all patterns back to the first step.
+     Hold & rotate to change current output channel pattern.
 
-CLK: Advance the Euclidean Rhythm pattern step for all channels.
+CLK: Clock input used to advance the patterns.
 
-RST: Trigger this input to restart all patterns.
-
-CV1-6: Trigger output for each Euclidean Rhythm.
+RST: Trigger this input to reset all pattern back to the first step.
 ```
 
 {{< encoder_firmware_button hex="A-RYTH-MATIK_Euclidean" buttonText="Flash Euclidean Firmware" >}}
