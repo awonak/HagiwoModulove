@@ -34,23 +34,25 @@ class Pattern {
       \param padding additional empty steps added to the pattern.
     */
     void Init(PatternState state) {
-        steps = state.steps;
-        hits = state.hits;
-        offset = state.offset;
-        padding = state.padding;
+        steps = constrain(state.steps, 0, MAX_PATTERN_LEN);
+        hits = constrain(state.hits, 1, steps);
+        padding = constrain(state.padding, 0, MAX_PATTERN_LEN - steps);
+        offset = constrain(state.offset, 0, (steps + padding) - 1);
         updatePattern();
     }
 
     PatternState GetState() { return {steps, hits, offset, padding}; }
 
-    // Advance the euclidean rhythm to the next step in the pattern.
+    // Get the current step value and advance the euclidean rhythm step index
+    // to the next step in the pattern.
     // Returns 1 for hit, 0 for rest, and 2 for padding.
     int NextStep() {
         if (steps == 0) return 0;
         
+        int value = GetStep(current_step);
         current_step =
             (current_step < steps + padding - 1) ? current_step + 1 : 0;
-        return GetStep(current_step);
+        return value;
     }
 
     // Returns 1 for hit, 0 for rest, and 2 for padding.
@@ -76,23 +78,14 @@ class Pattern {
     }
 
     void ChangeHits(int val) {
-        if (val == 1 && hits < steps) {
-            hits++;
-            updatePattern();
-        } else if (val == -1 && hits > 0) {
-            hits--;
-            updatePattern();
-        }
+        hits = constrain(hits + val, 0, steps);
+        updatePattern();
+
     }
 
     void ChangeOffset(int val) {
-        if (val == 1 && offset < (steps + padding) - 1) {
-            offset++;
-            updatePattern();
-        } else if (val == -1 && offset > 0) {
-            offset--;
-            updatePattern();
-        }
+        offset = constrain(offset + val, 0,  (steps + padding));
+        updatePattern();
     }
 
     void ChangePadding(int val) {
@@ -106,7 +99,7 @@ class Pattern {
         }
     }
 
-    void Reset() { current_step = steps; }
+    void Reset() { current_step = 0; }
 
    private:
     uint8_t pattern_[MAX_PATTERN_LEN];
