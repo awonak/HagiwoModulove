@@ -57,10 +57,10 @@ like output mode (trigger, gate, flip) and internal clock tempo.
 
 ```yaml
 ENCODER:
-     Short press to change between selecting a prameter and editing the parameter.
-     Long press to change global settings like output mode (trigger, gate, flip) and internal clock tempo.
-     Double Click to reset all patterns back to the first step.
-     Hold & rotate to change current output channel pattern.
+     Short press: change between selecting a prameter and editing the parameter.
+     Long press: change global settings like output mode (trigger, gate, flip) and internal clock tempo.
+     Double Click: reset all patterns back to the first step.
+     Hold & rotate: change current output channel pattern.
 
 CLK: Clock input used to advance the patterns.
 
