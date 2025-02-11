@@ -22,17 +22,6 @@
       &nbsp;
       <span class="upload-progress"></span>
   </button>
-  <button
-    arduino-uploader
-    hex-href='/HagiwoModulove/releases/{{ .Get "hex" | safeURL }}.lgt8f328p.hex'
-    board="lgt8f328p"
-    [optional]verify
-    [optional]port-filters='[{"usbProductId":46388,"usbVendorId":1241}]'
-  >
-      {{ with .Get "buttonText" }}{{ . | plainify }}{{ else -}} Upload Firmware {{ end }} to LGT8F328P
-      &nbsp;
-      <span class="upload-progress"></span>
-  </button>
 
   <div> Reversed Encoder Direction:</div>
   <button
@@ -54,17 +43,6 @@
     [optional]port-filters='[{"usbProductId":46388,"usbVendorId":1241}]'
   >
       {{ with .Get "buttonText" }}{{ . | plainify }}{{ else -}} Upload Firmware {{ end }} to Arduino Nano (old bootloader) - Reversed
-      &nbsp;
-      <span class="upload-progress"></span>
-  </button>
-  <button
-    arduino-uploader
-    hex-href='/HagiwoModulove/releases/{{ .Get "hex" | safeURL }}.lgt8f328p.reversed.hex'
-    board="lgt8f328p"
-    [optional]verify
-    [optional]port-filters='[{"usbProductId":46388,"usbVendorId":1241}]'
-  >
-      {{ with .Get "buttonText" }}{{ . | plainify }}{{ else -}} Upload Firmware {{ end }} to LGT8F328P - Reversed
       &nbsp;
       <span class="upload-progress"></span>
   </button>

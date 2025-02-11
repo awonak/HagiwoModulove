@@ -14,14 +14,12 @@ jobs:
       matrix:
         module: ["A-RYTH-MATIK"]
         firmware: ["BitGarden", "Euclidean", "Uncertainty", "TimeBandit"]
-        board: ["arduino:avr:nano", "arduino:avr:nano:cpu=atmega328old", "lgt8fx:avr:328"]
+        board: ["arduino:avr:nano", "arduino:avr:nano:cpu=atmega328old"]
         include:
           - board: arduino:avr:nano
             boardpath: nano
           - board: arduino:avr:nano:cpu=atmega328old
             boardpath: nanoOldBootloader
-          - board: lgt8fx:avr:328
-            boardpath: lgt8f328p
 
     steps:
       - name: Clone repo
@@ -36,7 +34,6 @@ jobs:
         run: |
           arduino-cli core update-index
           arduino-cli core install arduino:avr
-          arduino-cli core install lgt8fx:avr --additional-urls https://raw.githubusercontent.com/dbuezas/lgt8fx/master/package_lgt8fx_index.json
           arduino-cli config init
           arduino-cli config set library.enable_unsafe_install true
           arduino-cli lib install --git-url https://github.com/awonak/libModulove.git
