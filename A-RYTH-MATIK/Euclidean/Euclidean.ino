@@ -18,7 +18,6 @@
  * RST: Trigger this input to reset all pattern back to the first step.
  *
  */
-#include <FlexiTimer2.h>
 
 // Include the Modulove hardware library.
 #include <arythmatik.h>
@@ -28,6 +27,7 @@
 #include <Fonts/FreeSansBold9pt7b.h>
 
 // Script specific helper libraries.
+#include "clock.h"
 #include "pattern.h"
 #include "save_state.h"
 
@@ -80,6 +80,7 @@ enum Parameter {
     PARAM_HITS,
     PARAM_OFFSET,
     PARAM_PADDING,
+    PARAM_CLOCK_MOD,
     PARAM_LAST,
 };
 Parameter selected_param = PARAM_STEPS;
@@ -144,7 +145,7 @@ void setup() {
     InitState(patterns);
 
     if (state.internal_clock) {
-        StartClock();
+        StartClock(state.tempo, GetPPQN(), PlayStep);
     }
 
     // Display each clock division on the OLED.
@@ -159,9 +160,9 @@ void loop() {
     // If internal clock was changed, restart clock:
     if (update_internal_clock) {
         update_internal_clock = false;
-        FlexiTimer2::stop();
+        StopClock();
         if (state.internal_clock) {
-            StartClock();
+            StartClock(state.tempo, GetPPQN(), PlayStep);
         }
     }
 
@@ -191,16 +192,14 @@ void loop() {
     if (update_display) UpdateDisplay();
 }
 
-void StartClock() {
-    // 4PPQN period in milliseconds.
-    unsigned long interval = (60.0 * 1000) / double(state.tempo) / 4.0;
-    FlexiTimer2::set(interval, 1.0 / 1000, PlayStep);
-    FlexiTimer2::start();
-}
-
 void PlayStep() {
-    GatesOff();
+    static unsigned long counter = 0;
+    // GatesOff();  // TODO: this should be 50% duty cycle.
     for (int i = 0; i < OUTPUT_COUNT; i++) {
+        // Check clock mod for current pattern.
+        if (state.internal_clock && counter % clock_mod_ticks[clock_mod[i]] != 0) {
+            continue;
+        }
         if (patterns[i].NextStep() == 1) {
             if (state.output_mode == FLIP) {
                 hw.outputs[i].On()
@@ -209,12 +208,19 @@ void PlayStep() {
             } else {
                 hw.outputs[i].High();
             }
+            trigger_active = true;
+            ui_trigger_active = true;
         }
     }
-    last_clock_input = millis();
-    trigger_active = true;
-    ui_trigger_active = true;
-    update_display = true;
+    // Update the display on each quarter note.
+    if (counter % GetPPQN() == 0) {
+        last_clock_input = millis();
+        update_display = true;
+    }
+    counter++;
+}
+inline byte GetPPQN() {
+    return (state.internal_clock) ? PPQN : state.external_ppqn;
 }
 
 void GatesOff() {
@@ -287,14 +293,8 @@ void HandlePress(EncoderButton &eb) {
                     state_changed = true;
                     break;
                 case PAGE_CLOCK:
-                    if (state.internal_clock) {
-                        selected_mode = UIMODE_EDIT;
-                    } else {
-                        selected_mode = UIMODE_SELECT;
-                        selected_page = PAGE_MAIN;
-                        update_internal_clock = true;
-                        state_changed = true;
-                    }
+                    selected_mode = UIMODE_EDIT;
+                    update_internal_clock = true;
                     break;
                 case PAGE_SAVE:
                     SavePreset(patterns, selected_bank);
@@ -384,6 +384,12 @@ void UpdateParameter(Direction dir) {
                 case PARAM_PADDING:
                     patterns[state.selected_out].ChangePadding(val);
                     break;
+                case PARAM_CLOCK_MOD:
+                     // TODO: fix external clock PPQN. Hide clock mod for external clock until that gets sorted out.
+                    if (state.internal_clock) {
+                        ChangeClockMod(val, state.selected_out);
+                    }
+                    break;
             }
             break;
     }
@@ -407,12 +413,16 @@ void UpdateClock(Direction dir) {
             state.internal_clock = (dir == DIRECTION_INCREMENT);
             break;
         case UIMODE_EDIT:
-            // Read the accelerated amount of encoder rotations for adjusting tempo.
-            int amount = hw.eb.increment() * hw.eb.increment();
-            if (dir == DIRECTION_INCREMENT && state.tempo < MAX_TEMPO) {
-                state.tempo = min(state.tempo + amount, MAX_TEMPO);
-            } else if (dir == DIRECTION_DECREMENT && state.tempo > 0) {
-                state.tempo = max(state.tempo - amount, MIN_TEMPO);
+            if (state.internal_clock) {
+                // Read the accelerated amount of encoder rotations for adjusting tempo.
+                int amount = hw.eb.increment() * hw.eb.increment();
+                if (dir == DIRECTION_INCREMENT && state.tempo < MAX_TEMPO) {
+                    state.tempo = min(state.tempo + amount, MAX_TEMPO);
+                } else if (dir == DIRECTION_DECREMENT && state.tempo > 0) {
+                    state.tempo = max(state.tempo - amount, MIN_TEMPO);
+                }
+            } else {
+                state.external_ppqn = static_cast<ClockResolution>((state.external_ppqn + 1) % CLOCK_RESOLUTION_LAST);
             }
             break;
     }
@@ -493,6 +503,20 @@ void DisplayParam() {
     } else if (selected_param == PARAM_PADDING) {
         hw.display.print(F("Padding: "));
         hw.display.print(patterns[state.selected_out].padding);
+    } else if (selected_param == PARAM_CLOCK_MOD) {
+        // TODO: fix external clock PPQN. Hide clock mod for external clock until that gets sorted out.
+        hw.display.print(F("Clock Mod: "));
+        if (!state.internal_clock) {
+            hw.display.print(F("N/A"));
+        } else {
+            if (GetPPQN() / clock_mod_ticks[clock_mod[state.selected_out]] > 0) {
+                hw.display.print("X");
+                hw.display.print(GetPPQN() / clock_mod_ticks[clock_mod[state.selected_out]]);
+            } else {
+                hw.display.print("/");
+                hw.display.print(clock_mod_ticks[clock_mod[state.selected_out]] / GetPPQN());
+            }
+        }
     }
 }
 
@@ -631,6 +655,10 @@ void DisplayClockPage() {
         hw.display.setFont(&FreeSans18pt7b);
         hw.display.print(state.tempo);
         hw.display.setFont();
+    } else {
+        hw.display.setCursor(26, 32);
+        hw.display.print(F("PPQN: "));
+        hw.display.println(clock_resolution_display[state.external_ppqn]);
     }
 }
 

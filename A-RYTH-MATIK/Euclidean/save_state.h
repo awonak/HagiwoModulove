@@ -4,6 +4,7 @@
 #include <EEPROM.h>
 #include <arythmatik.h>
 
+#include "clock.h"
 #include "pattern.h"
 
 using namespace modulove;
@@ -38,6 +39,7 @@ struct State {
     uint8_t selected_out;
     uint8_t tempo;
     bool internal_clock;
+    ClockResolution external_ppqn;  // 4 / 16 / 24 PPQN.  
 };
 State state;
 
@@ -93,6 +95,7 @@ void InitState(Pattern *patterns) {
         state.selected_out = 0;
         state.tempo = 130;
         state.internal_clock = false;
+        state.external_ppqn = CLOCK_RESOLUTION_24_PPQN;
 
         // Provide a even distribution of default probabilities.
         for (int i = 0; i < OUTPUT_COUNT; i++) {
