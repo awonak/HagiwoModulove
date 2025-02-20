@@ -483,16 +483,16 @@ void DisplayParam() {
     hw.display.setCursor(26, 18);
     if (selected_param == PARAM_STEPS) {
         hw.display.print(F("Steps: "));
-        hw.display.print(patterns[state.selected_out].steps);
+        hw.display.print(patterns[state.selected_out].steps());
     } else if (selected_param == PARAM_HITS) {
         hw.display.print(F("Hits: "));
-        hw.display.print(patterns[state.selected_out].hits);
+        hw.display.print(patterns[state.selected_out].hits());
     } else if (selected_param == PARAM_OFFSET) {
         hw.display.print(F("Offset: "));
-        hw.display.print(patterns[state.selected_out].offset);
+        hw.display.print(patterns[state.selected_out].offset());
     } else if (selected_param == PARAM_PADDING) {
         hw.display.print(F("Padding: "));
-        hw.display.print(patterns[state.selected_out].padding);
+        hw.display.print(patterns[state.selected_out].padding());
     }
 }
 
@@ -555,9 +555,9 @@ void DisplayPattern() {
     byte top = 30;
     byte left = start;
 
-    byte steps = patterns[state.selected_out].steps;
-    byte offset = patterns[state.selected_out].offset;
-    byte padding = patterns[state.selected_out].padding;
+    byte steps = patterns[state.selected_out].steps();
+    byte offset = patterns[state.selected_out].offset();
+    byte padding = patterns[state.selected_out].padding();
 
     for (int i = 0; i < steps + padding; i++) {
         // Draw box, fill current step.
@@ -575,7 +575,7 @@ void DisplayPattern() {
         }
 
         // Draw right arrow on current played step.
-        if (ui_trigger_active && i == patterns[state.selected_out].current_step) {
+        if (ui_trigger_active && i == patterns[state.selected_out].current_step()) {
             hw.display.drawChar(left + 1, top, RIGHT_TRIANGLE, 1, 0, 1);
         }
 
