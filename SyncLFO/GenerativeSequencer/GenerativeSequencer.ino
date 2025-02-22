@@ -94,7 +94,7 @@ void loop() {
 
     // Update PWM CV output value.
     output = map(cv_pattern[step], 0, cv_max, 0, amplititude);
-    hw.output.Update(output);
+    hw.output.Update10bit(output);
 }
 
 void debug() {
