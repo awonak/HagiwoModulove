@@ -45,7 +45,7 @@ struct ClockDivision {
 // Declare A-RYTH-MATIK hardware variable.
 Arythmatik hw;
 ClockDivision clockDiv[OUTPUT_COUNT];
-int counter;
+volatile int counter;
 byte mode;  // Normal, Select Output, Edit.
 byte selected_out = 0;
 bool update_display = true;
@@ -77,9 +77,14 @@ void setup() {
     // Initialize the A-RYTH-MATIK peripherials.
     hw.Init();
 
+    // CLK & RST Pin Change Handers.
+    hw.AttachClockHandler(HandleClock);
+    hw.AttachResetHandler(HandleReset);
+
     // Set up encoder parameters
     hw.eb.setEncoderHandler(UpdateRotate);
     hw.eb.setClickHandler(UpdatePress);
+    hw.eb.setDoubleClickHandler(HandleDoubleClick);
 
     // Define each of the fixed clock divisions.
     // NOTE: This is binary value, clock divisions are bit shifted left by one.
@@ -97,9 +102,14 @@ void setup() {
 void loop() {
     // Read cv inputs and process encoder state to determine state for this loop.
     hw.ProcessInputs();
+    UpdateDisplay();
+}
 
-    // Advance the counter on CLK input
-    if (hw.clk.State() == DigitalInput::STATE_RISING) {
+void HandleDoubleClick(EncoderButton &eb) { counter = 0; }
+
+void HandleClock() {
+    // Advance the patterns on CLK input
+    if (hw.clk.Read() == HIGH) {
         counter++;
         for (int i = 0; i < OUTPUT_COUNT; i++) {
             // Bitwise logical check if division is high.
@@ -107,14 +117,17 @@ void loop() {
                 ? clockDiv[i].output.High()
                 : clockDiv[i].output.Low();
         }
+        digitalWrite(CLOCK_LED, HIGH);
+    } else {
+        digitalWrite(CLOCK_LED, LOW);
     }
+}
 
-    // Reset the clock division counter on RST input.
-    if (hw.rst.State() == DigitalInput::STATE_RISING) {
+void HandleReset() {
+    // Reset all patterns to the first pattern step on RST input.
+    if (hw.rst.Read() == HIGH) {
         counter = 0;
     }
-
-    UpdateDisplay();
 }
 
 void UpdatePress(EncoderButton &eb) {
