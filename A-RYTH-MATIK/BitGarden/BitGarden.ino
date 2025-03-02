@@ -135,6 +135,9 @@ void setup() {
     hw.eb.setLongPressHandler(HandleLongPress);
     hw.eb.setEncoderHandler(HandleRotate);
 
+    hw.AttachClockHandler(HandleClockPinChange);
+    hw.AttachResetHandler(HandleResetPinChange);
+
     // Initialize the A-RYTH-MATIK peripherials.
     hw.Init();
 
@@ -153,31 +156,6 @@ void setup() {
 void loop() {
     // Read inputs to determine state.
     hw.ProcessInputs();
-
-    // When RST goes high, reseed and reset.
-    if (hw.rst.State() == DigitalInput::STATE_RISING) {
-        Reset();
-    }
-
-    // Input clock has gone high, call each output's On() for a chance to
-    // trigger that output.
-    if (hw.clk.State() == DigitalInput::STATE_RISING) {
-        // When step count wraps, reset step count and reseed.
-        step_count = ++step_count % state.step_length;
-        if (step_count == 0) packet.Reseed();
-
-        for (int i = 0; i < OUTPUT_COUNT; i++) {
-            outputs[i].On();
-        }
-        update_display = true;
-    }
-
-    // Input clock has gone low, turn off Outputs.
-    if (hw.clk.State() == DigitalInput::STATE_FALLING) {
-        for (int i = 0; i < OUTPUT_COUNT; i++) {
-            outputs[i].Off();
-        }
-    }
 
     // Render any new UI changes to the OLED display.
     UpdateDisplay();
@@ -236,6 +214,35 @@ void Reset() {
     packet.NewRandomSeed();
     step_count = 0;
     update_display = true;
+}
+
+void HandleClockPinChange() {
+    // Input clock has gone high, call each output's On() for a chance to
+    // trigger that output.
+    if (hw.clk.Read() == HIGH) {
+        // When step count wraps, reset step count and reseed.
+        step_count = ++step_count % state.step_length;
+        if (step_count == 0) packet.Reseed();
+
+        for (int i = 0; i < OUTPUT_COUNT; i++) {
+            outputs[i].On();
+        }
+        update_display = true;
+    }
+
+    // Input clock has gone low, turn off Outputs.
+    if (hw.clk.Read() == LOW) {
+        for (int i = 0; i < OUTPUT_COUNT; i++) {
+            outputs[i].Off();
+        }
+    }
+}
+
+void HandleResetPinChange() {
+    // When RST goes high, reseed and reset.
+    if (hw.rst.Read() == HIGH) {
+        Reset();
+    }
 }
 
 // Short press handler.
@@ -450,7 +457,7 @@ void PageTitle(String title) {
 }
 
 void DisplayMainPage() {
-    PageTitle("BIT GARDEN");
+    PageTitle(F("BIT GARDEN"));
     // Draw boxes for pattern length.
     int start = 26;
     int top = 16;
@@ -509,7 +516,7 @@ void DisplayMainPage() {
 }
 
 void DisplaySeedPage() {
-    PageTitle("EDIT SEED");
+    PageTitle(F("EDIT SEED"));
     // Draw seed
     int xoffset;
     if (temp_seed >= 0x1000)
@@ -533,7 +540,7 @@ void DisplaySeedPage() {
 }
 
 void DisplayOutputModePage() {
-    PageTitle("OUTPUT MODE");
+    PageTitle(F("OUTPUT MODE"));
     // Draw output modes
     (state.mode == TRIGGER)
         ? hw.display.fillRect(12, 20, 8, 8, 1)
@@ -566,7 +573,7 @@ void DisplayOutputModePage() {
 }
 
 void DisplayProbabilityPage() {
-    PageTitle("PROBABILITY");
+    PageTitle(F("PROBABILITY"));
     // Draw boxes for pattern length.
     int top = 16;
     int left = 16;

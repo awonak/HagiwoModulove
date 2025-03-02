@@ -118,15 +118,9 @@ void setup() {
     hw.config.ReverseEncoder = true;
 #endif
 
-    // Dsiable echo clock when using Interrupt for CLK input.
-    hw.config.DisableEchoClock = true;
-
-    // Thanks to Sitka Instruments for the tip and docs from https://dronebotworkshop.com/interrupts/
-    // Enable PCIE0 Bit0 = 1 (Port B)
-    PCICR |= B00000001;
-    // Enable PCINT5 & PCINT3 (Pin 13 & Pin 11)
-    PCMSK0 |= B00101000;
-    // ISR (PCINT0_vect) - ISR for Port B (D8 - D13)
+    // CLK & RST Pin Change Handlers.
+    hw.AttachClockHandler(HandleClock);
+    hw.AttachResetHandler(HandleReset);
 
     // Set up encoder parameters
     hw.eb.setEncoderHandler(HandleRotate);
@@ -237,12 +231,14 @@ void HandleDoubleClick(EncoderButton &eb) {
 }
 
 // Pin Change Interrupt on Port B (D13 CLK).
-ISR(PCINT0_vect) {
+void HandleReset() {
     // Reset all patterns to the first pattern step on RST input.
     if (hw.rst.Read() == HIGH) {
         Reset();
     }
+}
 
+void HandleClock() {
     // Ignore CLK handler if using internal clock.
     if (state.internal_clock) return;
 

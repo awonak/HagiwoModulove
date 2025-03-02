@@ -45,7 +45,7 @@ struct ClockDivision {
 // Declare A-RYTH-MATIK hardware variable.
 Arythmatik hw;
 ClockDivision clockDiv[OUTPUT_COUNT];
-int counter;
+volatile int counter;
 byte mode;  // Normal, Select Output, Edit.
 byte selected_out = 0;
 bool update_display = true;

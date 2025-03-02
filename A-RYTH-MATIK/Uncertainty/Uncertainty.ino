@@ -70,6 +70,8 @@ void setup() {
     hw.eb.setLongPressHandler(LongPress);
     hw.eb.setEncoderHandler(UpdateParameter);
 
+    hw.AttachClockHandler(HandleClockPinChange);
+
     // Initialize the A-RYTH-MATIK peripherials.
     hw.Init();
 
@@ -85,7 +87,6 @@ void setup() {
     pinMode(CLOCK_LED, OUTPUT);
 
     // OLED Display configuration.
-    delay(1000);
     hw.display.begin(SSD1306_SWITCHCAPVCC, OLED_ADDRESS);
     hw.display.setTextColor(WHITE);
     hw.display.clearDisplay();
@@ -96,23 +97,25 @@ void loop() {
     // Read inputs to determine state.
     hw.ProcessInputs();
 
+    // Render any new UI changes to the OLED display.
+    UpdateDisplay();
+}
+
+void HandleClockPinChange() {
     // Input clock has gone high, call each output's On() for a chance to
     // trigger that output.
-    if (hw.clk.State() == DigitalInput::STATE_RISING) {
+    if (hw.clk.Read() == HIGH) {
         for (int i = 0; i < OUTPUT_COUNT; i++) {
             outputs[i].On();
         }
     }
 
     // Input clock has gone low, turn off Outputs.
-    if (hw.clk.State() == DigitalInput::STATE_FALLING) {
+    if (hw.clk.Read() == LOW) {
         for (int i = 0; i < OUTPUT_COUNT; i++) {
             outputs[i].Off();
         }
     }
-
-    // Render any new UI changes to the OLED display.
-    UpdateDisplay();
 }
 
 // Short button press. Change editable parameter.
