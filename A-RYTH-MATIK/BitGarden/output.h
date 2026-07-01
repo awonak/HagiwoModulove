@@ -27,6 +27,7 @@ class ProbablisticOutput {
     ~ProbablisticOutput() {}
 
     const static int MaxRandRange = 100;
+    const static int MaxLength = 32;
 
     /**
     Initializes the probablistic cv output object with a given digital cv and
@@ -52,10 +53,10 @@ class ProbablisticOutput {
     }
 
     // Turn the CV and LED High according to the probability value.
-    inline void On() {
+    inline void On(int step) {
         if (mode_ == GATE) low();
 
-        if (random(0, MaxRandRange) > prob_) return;
+        if (!pattern_[step]) return;
 
         switch (mode_) {
             case TRIGGER:
@@ -89,11 +90,21 @@ class ProbablisticOutput {
         prob_ = constrain(int(float(MaxRandRange) * probability), 0, MaxRandRange); 
     }
 
+    inline void SetStep(int step, bool hit) {
+        if (step >= 0 && step < MaxLength) pattern_[step] = hit;
+    }
+    
+    inline bool GetStep(int step) {
+        if (step >= 0 && step < MaxLength) return pattern_[step];
+        return false;
+    }
+
    private:
     DigitalOutput output_;
     int prob_;
     float fprob_;
     Mode mode_;
+    bool pattern_[MaxLength];
 
     inline void high() { output_.High(); }
 
