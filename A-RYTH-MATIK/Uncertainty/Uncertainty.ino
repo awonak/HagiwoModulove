@@ -13,6 +13,7 @@
 
 // Include the Modulove library.
 #include <arythmatik.h>
+#include <EEPROM.h>
 
 // Script specific output class.
 #include "output.h"
@@ -45,11 +46,59 @@ MenuPage selected_page = PAGE_MAIN;
 // Script config definitions
 const uint8_t PARAM_COUNT = 2;  // Count of editable parameters.
 
+// Script state & storage variables.
+const char SCRIPT_NAME[] = "UNCERTAINTY";
+const uint8_t SCRIPT_VER = 1;
+
+struct State {
+    // Version check.
+    char script[sizeof(SCRIPT_NAME)];
+    uint8_t version;
+    // State variables.
+    float probability[OUTPUT_COUNT];
+    Mode mode;
+};
+State state;
+
+bool state_changed = false;
+
 // Script state variables.
 byte selected_out = 0;
 byte selected_param = 0;
 
 bool update_display = true;
+
+// Initialize script state from EEPROM or default values.
+void InitState() {
+    EEPROM.get(0, state);
+
+    // Check if the data in memory matches expected values.
+    if ((strcmp(state.script, SCRIPT_NAME) != 0) || (state.version != SCRIPT_VER)) {
+        // Set script version identifier values.
+        strcpy(state.script, SCRIPT_NAME);
+        state.version = SCRIPT_VER;
+
+        // Default state vars.
+        state.mode = TRIGGER;
+        state.probability[0] = 0.96;
+        state.probability[1] = 0.82;
+        state.probability[2] = 0.64;
+        state.probability[3] = 0.48;
+        state.probability[4] = 0.32;
+        state.probability[5] = 0.18;
+    }
+}
+
+// Save state to EEPROM if state has changed.
+void SaveChanges() {
+    if (!state_changed) return;
+    state_changed = false;
+    for (int i = 0; i < OUTPUT_COUNT; i++) {
+        state.probability[i] = outputs[i].GetProb();
+    }
+    state.mode = outputs[0].GetMode();
+    EEPROM.put(0, state);
+}
 
 void setup() {
 // Only enable Serial monitoring if DEBUG is defined.
@@ -75,13 +124,13 @@ void setup() {
     // Initialize the A-RYTH-MATIK peripherials.
     hw.Init();
 
+    // Initialize script state from EEPROM or default values.
+    InitState();
+
     // Initialize each of the outputs with it's GPIO pins and probability.
-    outputs[0].Init(hw.outputs[0], 0.96);
-    outputs[1].Init(hw.outputs[1], 0.82);
-    outputs[2].Init(hw.outputs[2], 0.64);
-    outputs[3].Init(hw.outputs[3], 0.48);
-    outputs[4].Init(hw.outputs[4], 0.32);
-    outputs[5].Init(hw.outputs[5], 0.18);
+    for (int i = 0; i < OUTPUT_COUNT; i++) {
+        outputs[i].Init(hw.outputs[i], state.probability[i], state.mode);
+    }
 
     // CLOCK LED (DIGITAL)
     pinMode(CLOCK_LED, OUTPUT);
@@ -124,6 +173,7 @@ void ShortPress(EncoderButton &eb) {
     if (selected_page == PAGE_MAIN)
         selected_param = ++selected_param % PARAM_COUNT;
 
+    SaveChanges();
     update_display = true;
 }
 
@@ -136,6 +186,7 @@ void LongPress(EncoderButton &eb) {
         selected_page = PAGE_MAIN;
         selected_param = 0;
     }
+    SaveChanges();
     update_display = true;
 }
 
@@ -166,12 +217,14 @@ void UpdateMode(int dir) {
         outputs[i].SetMode(newMode);
     }
     update_display = true;
+    state_changed = true;
 }
 
 void UpdateProb(int dir) {
     if (dir == 1) outputs[selected_out].IncProb();
     if (dir == -1) outputs[selected_out].DecProb();
     update_display = true;
+    state_changed = true;
 }
 
 void UpdateDisplay() {
