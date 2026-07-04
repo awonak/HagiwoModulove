@@ -93,6 +93,7 @@ uint8_t seed_index;           // Indicated the seed digit to edit on Seed page.
 uint16_t temp_seed;           // Temporary seed for editing the current seed.
 Mode mode = TRIGGER;          // Current state for ouput behavior.
 byte selected_out;            // Selected output for changing probability.
+volatile bool needs_reset = false;
 
 // Script state & storage variables.
 // Expected version string for this firmware.
@@ -130,14 +131,6 @@ void setup() {
 #ifdef ENCODER_REVERSED
     hw.config.ReverseEncoder = true;
 #endif
-
-    hw.eb.setClickHandler(HandleShortPress);
-    hw.eb.setLongPressHandler(HandleLongPress);
-    hw.eb.setEncoderHandler(HandleRotate);
-
-    hw.AttachClockHandler(HandleClockPinChange);
-    hw.AttachResetHandler(HandleResetPinChange);
-
     // Initialize the A-RYTH-MATIK peripherials.
     hw.Init();
 
@@ -148,14 +141,28 @@ void setup() {
     packet.SetSeed(state.seed);
 
     // Initialize the outputs & probabilities from InitState.
-    for (int i; i < OUTPUT_COUNT; i++) {
+    for (int i = 0; i < OUTPUT_COUNT; i++) {
         outputs[i].Init(hw.outputs[i], float(state.probability[i]) / 100.0f);
     }
+
+    GeneratePatterns();
+
+    hw.eb.setClickHandler(HandleShortPress);
+    hw.eb.setLongPressHandler(HandleLongPress);
+    hw.eb.setEncoderHandler(HandleRotate);
+
+    hw.AttachClockHandler(HandleClockPinChange);
+    hw.AttachResetHandler(HandleResetPinChange);
 }
 
 void loop() {
     // Read inputs to determine state.
     hw.ProcessInputs();
+
+    if (needs_reset) {
+        needs_reset = false;
+        Reset();
+    }
 
     // Render any new UI changes to the OLED display.
     UpdateDisplay();
@@ -212,20 +219,31 @@ void SaveChanges() {
 // Reset the pattern sequence and reseed the psudo random deterministic pattern.
 void Reset() {
     packet.NewRandomSeed();
+    GeneratePatterns();
     step_count = 0;
     update_display = true;
+}
+
+// Generate probabilistic patterns for all outputs for all steps deterministically.
+void GeneratePatterns() {
+    packet.Reseed();
+    for (int step = 0; step < MAX_LENGTH; step++) {
+        for (int i = 0; i < OUTPUT_COUNT; i++) {
+            bool hit = random(0, ProbablisticOutput::MaxRandRange) <= outputs[i].GetProbInt();
+            outputs[i].SetStep(step, hit);
+        }
+    }
 }
 
 void HandleClockPinChange() {
     // Input clock has gone high, call each output's On() for a chance to
     // trigger that output.
     if (hw.clk.Read() == HIGH) {
-        // When step count wraps, reset step count and reseed.
+        // When step count wraps, reset step count.
         step_count = ++step_count % state.step_length;
-        if (step_count == 0) packet.Reseed();
 
         for (int i = 0; i < OUTPUT_COUNT; i++) {
-            outputs[i].On();
+            outputs[i].On(step_count);
         }
         update_display = true;
     }
@@ -241,7 +259,7 @@ void HandleClockPinChange() {
 void HandleResetPinChange() {
     // When RST goes high, reseed and reset.
     if (hw.rst.Read() == HIGH) {
-        Reset();
+        needs_reset = true;
     }
 }
 
@@ -341,6 +359,7 @@ void UpdateSeed(Direction dir) {
         packet.NextSeed();
     else if (dir == DIRECTION_DECREMENT)
         packet.PrevSeed();
+    GeneratePatterns();
     update_display = true;
     state_changed = true;
 }
@@ -385,6 +404,7 @@ void UpdateOutput(Direction dir) {
 void UpdatePercentage(Direction dir) {
     if (dir == DIRECTION_INCREMENT) outputs[selected_out].IncProb();
     if (dir == DIRECTION_DECREMENT) outputs[selected_out].DecProb();
+    GeneratePatterns();
     update_display = true;
     state_changed = true;
 }
@@ -407,6 +427,7 @@ void EditSeed(Direction dir) {
         temp_seed -= change;
 
     packet.UpdateSeed(temp_seed);
+    GeneratePatterns();
     state_changed = true;
     update_display = true;
 }
@@ -476,10 +497,22 @@ void DisplayMainPage() {
             _top += 6;
         else if (state.step_length <= 24)
             _top += 4;
-        // Draw box, fill current step.
-        (i == step_count + 1)
-            ? hw.display.fillRect(left, _top, boxSize, boxSize, 1)
-            : hw.display.drawRect(left, _top, boxSize, boxSize, 1);
+        // Draw box, fill if hit.
+        bool is_hit = outputs[selected_out].GetStep(i - 1);
+        if (is_hit) {
+            hw.display.fillRect(left, _top, boxSize, boxSize, 1);
+        } else {
+            hw.display.drawRect(left, _top, boxSize, boxSize, 1);
+        }
+
+        // Draw play head indicator
+        if (i == step_count + 1) {
+            if (is_hit) {
+                hw.display.drawChar(left + 1, _top, RIGHT_TRIANGLE, 0, 1, 1);
+            } else {
+                hw.display.drawChar(left + 1, _top, RIGHT_TRIANGLE, 1, 0, 1);
+            }
+        }
 
         // Advance the draw cursors.
         left += boxSize + padding + 1;
