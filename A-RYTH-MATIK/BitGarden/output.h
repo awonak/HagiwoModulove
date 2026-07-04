@@ -17,7 +17,6 @@ enum Mode {
     MODE_LAST,
 };
 
-
 /**
   Class for handling probablistic triggers.
 */
@@ -27,6 +26,7 @@ class ProbablisticOutput {
     ~ProbablisticOutput() {}
 
     const static int MaxRandRange = 100;
+    const static int MaxLength = 32;
 
     /**
     Initializes the probablistic cv output object with a given digital cv and
@@ -52,10 +52,10 @@ class ProbablisticOutput {
     }
 
     // Turn the CV and LED High according to the probability value.
-    inline void On() {
+    inline void On(int step) {
         if (mode_ == GATE) low();
 
-        if (random(0, MaxRandRange) > prob_) return;
+        if (!GetStep(step)) return;
 
         switch (mode_) {
             case TRIGGER:
@@ -85,8 +85,25 @@ class ProbablisticOutput {
     inline void IncProb() { SetProb(float(constrain(++prob_, 0, MaxRandRange)) / float(MaxRandRange)); }
     inline void DecProb() { SetProb(float(constrain(--prob_, 0, MaxRandRange)) / float(MaxRandRange)); }
     inline void SetProb(float probability) {
-        fprob_ = probability; 
-        prob_ = constrain(int(float(MaxRandRange) * probability), 0, MaxRandRange); 
+        fprob_ = probability;
+        prob_ = constrain(int(float(MaxRandRange) * probability), 0, MaxRandRange);
+    }
+
+    inline void SetStep(int step, bool hit) {
+        if (step >= 0 && step < MaxLength) {
+            if (hit) {
+                pattern_ |= (1UL << step);
+            } else {
+                pattern_ &= ~(1UL << step);
+            }
+        }
+    }
+
+    inline bool GetStep(int step) {
+        if (step >= 0 && step < MaxLength) {
+            return (pattern_ & (1UL << step)) != 0;
+        }
+        return false;
     }
 
    private:
@@ -94,6 +111,7 @@ class ProbablisticOutput {
     int prob_;
     float fprob_;
     Mode mode_;
+    uint32_t pattern_ = 0;
 
     inline void high() { output_.High(); }
 
