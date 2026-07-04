@@ -134,7 +134,6 @@ void setup() {
     hw.eb.setClickHandler(HandleShortPress);
     hw.eb.setLongPressHandler(HandleLongPress);
     hw.eb.setEncoderHandler(HandleRotate);
-    hw.eb.setEncoderPressedHandler(HandlePressedRotation);
 
     hw.AttachClockHandler(HandleClockPinChange);
     hw.AttachResetHandler(HandleResetPinChange);
@@ -149,11 +148,9 @@ void setup() {
     packet.SetSeed(state.seed);
 
     // Initialize the outputs & probabilities from InitState.
-    for (int i = 0; i < OUTPUT_COUNT; i++) {
+    for (int i; i < OUTPUT_COUNT; i++) {
         outputs[i].Init(hw.outputs[i], float(state.probability[i]) / 100.0f);
     }
-
-    GeneratePatterns();
 }
 
 void loop() {
@@ -215,31 +212,20 @@ void SaveChanges() {
 // Reset the pattern sequence and reseed the psudo random deterministic pattern.
 void Reset() {
     packet.NewRandomSeed();
-    GeneratePatterns();
     step_count = 0;
     update_display = true;
-}
-
-// Generate probabilistic patterns for all outputs for all steps deterministically.
-void GeneratePatterns() {
-    packet.Reseed();
-    for (int step = 0; step < MAX_LENGTH; step++) {
-        for (int i = 0; i < OUTPUT_COUNT; i++) {
-            bool hit = random(0, ProbablisticOutput::MaxRandRange) <= outputs[i].GetProbInt();
-            outputs[i].SetStep(step, hit);
-        }
-    }
 }
 
 void HandleClockPinChange() {
     // Input clock has gone high, call each output's On() for a chance to
     // trigger that output.
     if (hw.clk.Read() == HIGH) {
-        // When step count wraps, reset step count.
+        // When step count wraps, reset step count and reseed.
         step_count = ++step_count % state.step_length;
+        if (step_count == 0) packet.Reseed();
 
         for (int i = 0; i < OUTPUT_COUNT; i++) {
-            outputs[i].On(step_count);
+            outputs[i].On();
         }
         update_display = true;
     }
@@ -324,25 +310,6 @@ void HandleRotate(EncoderButton &eb) {
         : UpdateParameter(dir);
 }
 
-void HandlePressedRotation(EncoderButton &eb) {
-    if (selected_page == PAGE_MAIN) {
-        ChangeSelectedOutput(hw.EncoderDirection());
-    }
-}
-
-void ChangeSelectedOutput(Direction dir) {
-    switch (dir) {
-        case DIRECTION_DECREMENT:
-            if (selected_out > 0) --selected_out;
-            update_display = true;
-            break;
-        case DIRECTION_INCREMENT:
-            if (selected_out < OUTPUT_COUNT - 1) ++selected_out;
-            update_display = true;
-            break;
-    }
-}
-
 // When in select page mode, scroll through menu pages.
 void UpdatePage(Direction dir) {
     if (dir == DIRECTION_INCREMENT && selected_page < PAGE_LAST - 1) {
@@ -374,7 +341,6 @@ void UpdateSeed(Direction dir) {
         packet.NextSeed();
     else if (dir == DIRECTION_DECREMENT)
         packet.PrevSeed();
-    GeneratePatterns();
     update_display = true;
     state_changed = true;
 }
@@ -419,7 +385,6 @@ void UpdateOutput(Direction dir) {
 void UpdatePercentage(Direction dir) {
     if (dir == DIRECTION_INCREMENT) outputs[selected_out].IncProb();
     if (dir == DIRECTION_DECREMENT) outputs[selected_out].DecProb();
-    GeneratePatterns();
     update_display = true;
     state_changed = true;
 }
@@ -442,7 +407,6 @@ void EditSeed(Direction dir) {
         temp_seed -= change;
 
     packet.UpdateSeed(temp_seed);
-    GeneratePatterns();
     state_changed = true;
     update_display = true;
 }
@@ -495,11 +459,6 @@ void PageTitle(String title) {
 
 void DisplayMainPage() {
     PageTitle(F("BIT GARDEN"));
-
-    // Draw currently selected output channel index.
-    hw.display.setCursor(4, 26);
-    hw.display.println(selected_out + 1);
-
     // Draw boxes for pattern length.
     int start = 26;
     int top = 16;
@@ -508,7 +467,7 @@ void DisplayMainPage() {
     int padding = 2;
     int wrap = 8;
 
-    for (int i = 0; i < state.step_length; i++) {
+    for (int i = 1; i <= state.step_length; i++) {
         // Determine how much top padding to use.
         int _top = top;
         if (state.step_length <= 8)
@@ -517,29 +476,21 @@ void DisplayMainPage() {
             _top += 6;
         else if (state.step_length <= 24)
             _top += 4;
-        
-        // Draw box, fill if it's a hit on the currently selected output.
-        if (outputs[selected_out].GetStep(i)) {
-            hw.display.fillRect(left, _top, boxSize, boxSize, 1);
-        } else {
-            hw.display.drawRect(left, _top, boxSize, boxSize, 1);
-        }
-        
-        // Draw right arrow on current played step.
-        if (i == step_count) {
-            hw.display.drawChar(left + 1, _top, RIGHT_TRIANGLE, 1, 0, 1);
-        }
+        // Draw box, fill current step.
+        (i == step_count + 1)
+            ? hw.display.fillRect(left, _top, boxSize, boxSize, 1)
+            : hw.display.drawRect(left, _top, boxSize, boxSize, 1);
 
         // Advance the draw cursors.
         left += boxSize + padding + 1;
 
         // Show edit icon for length if it's selected.
-        if (selected_param == PARAM_LENGTH && i == state.step_length - 1) {
+        if (selected_param == PARAM_LENGTH && i == state.step_length) {
             hw.display.drawChar(left, _top, LEFT_TRIANGLE, 1, 0, 1);
         }
 
         // Wrap the box draw cursor if we hit wrap count.
-        if ((i + 1) % wrap == 0) {
+        if (i % wrap == 0) {
             top += boxSize + padding;
             left = start;
         }
