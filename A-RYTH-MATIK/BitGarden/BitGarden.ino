@@ -150,6 +150,7 @@ void setup() {
     hw.eb.setClickHandler(HandleShortPress);
     hw.eb.setLongPressHandler(HandleLongPress);
     hw.eb.setEncoderHandler(HandleRotate);
+    hw.eb.setEncoderPressedHandler(HandlePressedRotation);
 
     hw.AttachClockHandler(HandleClockPinChange);
     hw.AttachResetHandler(HandleResetPinChange);
@@ -319,6 +320,25 @@ void HandleLongPress(EncoderButton &eb) {
     update_display = true;
 }
 
+void HandlePressedRotation(EncoderButton &eb) {
+    if (selected_page == PAGE_MAIN) {
+        ChangeSelectedOutput(hw.EncoderDirection());
+    }
+}
+
+void ChangeSelectedOutput(Direction dir) {
+    switch (dir) {
+        case DIRECTION_DECREMENT:
+            if (selected_out > 0) --selected_out;
+            update_display = true;
+            break;
+        case DIRECTION_INCREMENT:
+            if (selected_out < OUTPUT_COUNT - 1) ++selected_out;
+            update_display = true;
+            break;
+    }
+}
+
 void HandleRotate(EncoderButton &eb) {
     // Read encoder for a change in direction and update the selected page or
     // parameter.
@@ -478,8 +498,38 @@ void PageTitle(String title) {
     hw.display.drawFastHLine(0, 10, SCREEN_WIDTH, WHITE);
 }
 
+void DisplayChannels() {
+    hw.display.setCursor(7, 16);
+    hw.display.println(selected_out + 1);
+
+    const byte start_y = 26;
+    const byte boxSize = 4;
+    const byte margin = 2;
+    const byte wrap = 3;
+    byte top = start_y;
+    byte left = 4;
+
+    for (int i = 1; i <= OUTPUT_COUNT; i++) {
+        // Draw box, fill current step.
+        (i == selected_out + 1)
+            ? hw.display.fillRect(left, top, boxSize, boxSize, 1)
+            : hw.display.drawRect(left, top, boxSize, boxSize, 1);
+
+        // Advance the draw cursors.
+        top += boxSize + margin + 1;
+
+        // Wrap the box draw cursor if we hit wrap count.
+        if (i % wrap == 0) {
+            top = start_y;
+            left += boxSize + margin + 1;
+        }
+    }
+}
+
 void DisplayMainPage() {
     PageTitle(F("BIT GARDEN"));
+    DisplayChannels();
+
     // Draw boxes for pattern length.
     int start = 26;
     int top = 16;
