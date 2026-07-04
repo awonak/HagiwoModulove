@@ -10,9 +10,9 @@ Deterministic psudo random gate processor. [[source](https://github.com/awonak/H
 Each output will mirror CLK according to a decreasing deterministic probability
 set by the seed value. RST input will reset the psudo random sequence. Short
 press of the encoder will select a diffent editable parameter on the current
-page. Long press the encoder to select a different page. The user configurable
-parameters will be saved to EEPROM and will be recalled the next time you power
-on the module.
+page. Long press the encoder to select a different page. Press and rotate to
+select different output channels. The user configurable parameters will be
+saved to EEPROM and will be recalled the next time you power on the module.
 
 Main page - adjust the pattern length or randomize the seed.
 
@@ -26,8 +26,9 @@ Seed page - manually enter a seed value.
 
 ```yaml
 Encoder:
-     short press: Toggle between editable parameters on the current page.
-     long press: Enter page select mode.
+     Short press: Toggle between editable parameters on the current page.
+     Long press: Enter page select mode.
+     Hold & rotate: change current output channel pattern.
 
 CLK: Provide a gate or trigger for each output to repeat with decreasing
      probability in each output.
@@ -104,7 +105,8 @@ Connect a trigger or gate source to the CLK input and the each output will
 mirror that signal according to a decreasing probability. Long press the
 encoder to change trigger modes. `Trig` will simply echo the trigger or
 gate received from the CLK input. `Flip` mode will toggle the output on
-or off upon each new CLK input.
+or off upon each new CLK input. The user configured probabilities will be
+saved to EEPROM and will be recalled the next time you power on the module.
 
 {{< youtube SHZaS9hu4qI >}}
 
